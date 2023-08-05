@@ -54,7 +54,7 @@ class halo_with_sub(smooth_halo,tidal_radius):
         for b in range(N_sub_m_bin) :
             # need to change that also !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             my_int = integrate.quad(lambda m: dN_dm(m), m_bin[b], m_bin[b+1])
-            N_sub_bin[b] = np.int(np.round(my_int[0],decimals=0)) # number of subhalos by subhalo mass bin
+            N_sub_bin[b] = int(np.round(my_int[0],decimals=0)) # number of subhalos by subhalo mass bin
         N_sub_tot = np.sum(N_sub_bin)
         m_sub = np.zeros((N_sub_tot))
         N_start, N_end = 0, N_sub_bin[0]
@@ -139,7 +139,7 @@ class halo_with_sub(smooth_halo,tidal_radius):
         # so Mass_main = 100 MW = 10**14 Msun/h and m_part = 0.001 MW = 10**9 M_sun/h by default    
         # res, R_min_main and R_max_main are in unit of the main halo size (so R_max_main = 1)
         M_main = M_tot * (1 - f_sub) # mass of the main smooth halo in MW mass
-        N_main = np.int(M_main/m_part) # total number of particles in the main smooth halo
+        N_main = int(M_main/m_part) # total number of particles in the main smooth halo
         M_sub = f_sub * M_tot # total mass of the subhalos in MW mass
         ####################################################################### main smooth halo generation
         main_halo = self.smooth_halo_creation(kind_profile_main,N_part=N_main,N_bin=N_bin_main,
