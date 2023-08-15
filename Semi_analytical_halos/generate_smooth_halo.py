@@ -29,7 +29,7 @@ class smooth_halo(profile):
     
     def around_integer_from_float(self,my_float):
         if isinstance(my_float,float) :    
-            my_int = np.int(my_float)
+            my_int = int(my_float)
             p = 1 - (my_float - my_int) # proba of adding +1 to the number of subhalos selected
             add = np.random.binomial(1, p)
             my_int += add
@@ -183,8 +183,9 @@ class smooth_halo(profile):
         plt.show()
         return()
     
-    def smooth_halo_creation(self,kind_profile,
-                             N_part=10000,N_bin=30,R_min=0,R_max=1,res=0.01,r_shell_binning='logarithmic',a_ax=1,b_ax=1,c_ax=1):
+    def smooth_halo_creation(self, kind_profile,
+                             N_part=10000, N_bin=30, R_min=0, R_max=1,
+                             res=0.01, r_shell_binning='logarithmic', a_ax=1,b_ax=1,c_ax=1):
         ''' # This is the main fuction of this program, it generates smooth halos at position x,y,z = 0,0,0
         # It creates particles in a halo of a given density profile 
         # kind_profile should be a list containing the kind of profile you want.
@@ -241,9 +242,9 @@ class smooth_halo(profile):
             # I compute the number of particles in each radius bin i.e. in each shell
             my_int =  integrate.quad(lambda r: n_x_2(r), r_bin[b], r_bin[b+1]) # this is in mass unit
             #N_part_bin[b+1] = self.around_integer_from_float( (4*np.pi*n_s) * my_int[0] ) # number of particle in the bin b
-            #N_part_bin[b+1] = np.int(np.round((4*np.pi*n_s) * my_int[0], decimals=0)) # number of particle in the bin b
+            #N_part_bin[b+1] = int(np.round((4*np.pi*n_s) * my_int[0], decimals=0)) # number of particle in the bin b
             N_part_float = (4*np.pi*n_s) * my_int[0]
-            N_part_int = np.int(N_part_float)
+            N_part_int = int(N_part_float)
             N_part_bin[b+1] = N_part_int
             proba[b] = 1 - (N_part_float - N_part_int) # proba of NOT set a particle in this bin b
         ####################################################################### throw the particles inside the shells according to the density
@@ -287,12 +288,12 @@ class smooth_halo(profile):
 if __name__ == '__main__':
     halo = smooth_halo()
     c = 10
-    kind_profile = ['abg',c]
-    my_halo = halo.smooth_halo_creation(kind_profile)
+    kind_profile = ['abg', c]
+    my_halo = halo.smooth_halo_creation(kind_profile, b_ax=0.5, c_ax=0.5)
     data = my_halo[0]
     print('N_tot =',my_halo[1])
-    halo.plot_data(data[:,0],data[:,1])
+    #halo.plot_data(data[:,0],data[:,1])
     halo.beauty_plot_colorbar(data)
-    halo.do_many_times(30)
+    #halo.do_many_times(10)
 
 
