@@ -23,9 +23,9 @@ import unsiotools.simulations.cfalcon as falcon
 cf = falcon.CFalcon()
 
 ###############################################################################
-from density_profile import profile
+from density_profile import Profile
 
-class smooth_halo(profile):
+class Smooth_halo(Profile):
     
     def around_integer_from_float(self,my_float):
         if isinstance(my_float,float) :    

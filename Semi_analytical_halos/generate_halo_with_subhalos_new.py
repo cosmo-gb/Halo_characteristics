@@ -15,10 +15,10 @@ import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import random
 
-from generate_smooth_halo import smooth_halo
-from compute_tidal_radii import tidal_radius
+from generate_smooth_halo import Smooth_halo
+from compute_tidal_radii import Tidal_radius
 
-class halo_with_sub(smooth_halo, tidal_radius):
+class Halo_with_sub(Smooth_halo, Tidal_radius):
     
     def plot_data_two(self,x,y,N,x_min=-1,x_max=1,y_min=-1,y_max=1) :
         plt.rc('font', family='serif')

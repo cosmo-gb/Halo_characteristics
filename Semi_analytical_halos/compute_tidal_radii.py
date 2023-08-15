@@ -15,9 +15,9 @@ I also check that I got similar results than the Figure 3.8 in the thesis of Str
 import numpy as np
 import matplotlib.pyplot as plt
 
-from density_profile import profile
+from density_profile import Profile
 
-class tidal_radius(profile):
+class Tidal_radius(Profile):
     
     #def __init__(self, kind_main, kind_subhalo):
     #    self.kind_main = kind_main

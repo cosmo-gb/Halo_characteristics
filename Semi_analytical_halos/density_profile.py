@@ -19,7 +19,7 @@ import unsiotools.simulations.cfalcon as falcon
 cf = falcon.CFalcon()
 import matplotlib.pyplot as plt
 
-class profile:
+class Profile:
     
     def abg_profile(self,r_minus_2,alpha,beta,gamma):
         if alpha <=0 : # problematic case
