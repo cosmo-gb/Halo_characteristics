@@ -183,44 +183,62 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         N_sub_tot = integrate.quad(lambda m: dN_dm(m), m_min, m_max) # approximation of the total number of subhalos
         N_sub_tot = self.around_integer_from_float(N_sub_tot[0]) # approximation of the total number of subhalos
         if verbose:
-            print("Estimate of number of fake subhalos generated = ",N_sub_tot)
-        ####################################################################### masses of the subhalos
-        N_sub_bin, m_sub, N_sub_tot, m_bin = self.get_subhalo_masses(dN_dm,m_min,m_max,N_sub_m_bin)
-        ####################################################################### concentrations of subhalos
+            print("Estimate of number of fake subhalos generated = ", N_sub_tot)
+        ######################## masses of subhalos ##################################################
+        N_sub_bin, m_sub, N_sub_tot, m_bin = self.get_subhalo_masses(dN_dm, m_min, m_max, N_sub_m_bin)
+        ######################## concentrations of subhalos ##########################################
         # from m_sub I generate c_sub, with normal distributions (see Batthacharya+13)
         c_sub = self.get_concentration_from_mass(m_sub) 
         r_minus_2_sub = 1/c_sub # in unit of the size of each subhalo
-        ####################################################################### get rho_minus_2 from m_sub and c_sub
+        ######################## get rho_minus_2 from m_sub and c_sub ################################
         N_part_in_sub = self.around_integer_from_float(m_sub/m_part)# Number of particles inside subhalos
         R_max_sub = R_max_main * (m_sub/M_main)**(1/3) # radius of each sub_halo in the unit of the main halo
         # then I select only particles in a sphere of r_t for each subhalo
         ######################### set positions of the subhalos ######################################
-        sub_pos = self.smooth_halo_creation(kind_profile_pos_sub,N_part=N_sub_tot,N_bin=100,R_min=res,
-                                            a_ax=a_ax_main,b_ax=b_ax_main,c_ax=c_ax_main)
+        # number of bins for subhalo positions
+        N_bin_subalo_pos = int(np.round(30 * np.log10(1 + N_sub_tot/100), decimals=0)) 
+        if N_bin_subalo_pos < 10 :
+            print("The number of bin for the subhalos distribution of positions is :", N_bin_subalo_pos)
+            print("This is small thus I reset it to 10")
+            N_bin_subalo_pos = 10
+        sub_pos = self.smooth_halo_creation(kind_profile_pos_sub, N_part=N_sub_tot, 
+                                            N_bin=N_bin_subalo_pos, R_min=res,
+                                            a_ax=a_ax_main, b_ax=b_ax_main, c_ax=c_ax_main)
         sub_pos = sub_pos["data"] # positions of the subhalos
         r_sub = np.sqrt(sub_pos[:,0]**2 + sub_pos[:,1]**2 + sub_pos[:,2]**2) # in the halo unit
-        N_sub_fake = len(sub_pos)
-        ####################################################################### subhalos generation
-        # I start to generate a lot of subhalo
-        halo_tot = main_halo["data"] # initialisation: will contain the positions of all particles in the total halo
-        N_part_sub_fin = np.zeros((N_sub_fake), dtype=int) # R_max and N_part of each subhalo
-        r_min, r_max, N_bin = 0.001, 1, 1000
-        r_test = np.logspace(np.log10(r_min),np.log10(r_max),N_bin+1) # in unit of the subhalo size
-        r_t_sub = np.zeros((N_sub_fake))
+        N_sub_fake = len(sub_pos) # number of subhalo
+        ########################## subhalos generation ##############################################
+        # I start to generate more subhalos than needed
+        # initialisation: halo_tot will contain the positions of all particles in the total halo at the end
+        halo_tot = main_halo["data"] 
+        # N_part_sub_fin will contain the number of particles contained in each halo after tidal radius
+        N_part_sub_fin = np.zeros((N_sub_fake), dtype=int) 
+        # hard coded, r_bin_sub is only used for the computation of the mass
+        r_min, r_max, N_bin = 0.0001, 1, 1000
+        r_bin_sub = np.logspace(np.log10(r_min), np.log10(r_max), N_bin+1) # in unit of the subhalo size
+        r_t_sub = np.zeros((N_sub_fake)) # will contain tidal radius of all subhalos
         if verbose:
-            print("Number of fake subhalos generated = ",N_sub_fake)
+            print("Number of fake subhalos generated = ", N_sub_fake)
+        N_min_in_sub = m_min/m_part # minimal number of particles in a subhalo (before tidal effect)
+        if N_min_in_sub < 10:
+            print("Be carefull, you are generating subhalos with ",N_min_in_sub," particles")
+        # number of bins for particles inside subhalos, in principle different for each subhalo
+        N_bin_subalos = np.array(np.round(10 * np.log10(1 + N_part_in_sub/N_min_in_sub),
+                                          decimals=0), dtype=int)
+        ########################### loop on each individual subhalo ###############################
         for s in range(N_sub_fake) : # loop on each individual subhalo
-            ################################################################### subhalo s generation
-            kind_profile_use = kind_profile_sub
-            kind_profile_use["concentration"] = c_sub[s]
-            # be carefull, I assumed that my subhalos are all spherical
-            sub_halo = self.smooth_halo_creation(kind_profile_use,N_part=N_part_in_sub[s],N_bin=10,
-                                                 R_min=0,R_max=R_max_sub[s],res=res,
+            kind_profile_sub["concentration"] = c_sub[s]
+            # be carefull, I assumed that my subhalos are all sphericals
+            ####################### generation of the subhalo s ###################################
+            sub_halo = self.smooth_halo_creation(kind_profile_sub, N_part=N_part_in_sub[s], 
+                                                 N_bin=N_bin_subalos[s],
+                                                 R_min=0, R_max=R_max_sub[s], res=res,
                                                  r_shell_binning=r_shell_binning)
                                                  #a_ax=a_ax_main,b_ax=b_ax_main,c_ax=c_ax_main)
             ##################################################################################################
-            r_s, n_x, log_slope = self.deal_with_kind_profile(kind_profile_use, r_test, r_max) 
-            r_t_sub[s] = self.r_t_Jacobi_smooth_Springel(kind_profile_main, r_sub[s], kind_profile_use, r_s, n_x, r_test)
+            r_s, n_x = self.deal_with_kind_profile(kind_profile_sub, R_max=r_max) 
+            r_t_sub[s] = self.r_t_Jacobi_smooth_Springel(kind_profile_main, r_sub[s], kind_profile_sub,
+                                                         r_s, n_x, r_bin_sub)
             r_t_sub[s] *= R_max_sub[s] # in the main halo unit
             ####################################################################################################
             # now I apply tidal effect and remove the outer part of subhalos
@@ -253,8 +271,7 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         f_sub_end = np.sum(N_part_sub_halos)/N_tot
         print("Desired fraction of subhalos =",f_sub)
         print("Obtained fraction of subhalo at the end =",f_sub_end)
-        ###############################################################################################
-        # finally I add these subhalos to the main halo
+        ######################## finally I add these subhalos to the main halo
         N_sub_halos = len(ind_sub_use)
         halo_sub = halo_tot[N_main_get:]
         halo_sub_keep = np.zeros((1,3))
@@ -284,8 +301,6 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                          "m_sub": m_sub, "R_max_sub": R_max_sub, "N_part_in_sub": N_part_in_sub,
                          "N_part_sub_fin": N_part_sub_fin, "main_halo": main_halo, "f_sub_end": f_sub_end}
         return halo_with_sub
-            #(halo_tot, sub_pos, N_sub_tot, m_sub, R_max_sub, 
-            #   N_part_in_sub, N_part_sub_fin, main_halo, f_sub_end)
     
     def generate_many(self,N=2):
         c_main, c_sub, c_sub_pos = 10, 10, 1

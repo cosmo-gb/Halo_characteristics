@@ -71,7 +71,7 @@ class Tidal_radius(Profile):
             r_t = r[ind_test_ok]
         return(r_t)
     
-    def r_t_Jacobi_smooth_Stref(self,kind_main,R_main,kind_subhalo,r_s,n_x,r):
+    def r_t_Jacobi_smooth_Stref(self, kind_main, R_main, kind_subhalo, r_s, n_x, r,):
         # Ok in fact I think that all mass are in unit of the mass of the main halo: to be checked
         # M_main and M_sub should be in the same unit
         #r = np.logspace(np.log10(r_min),np.log10(r_max),N_bin+1) # in unit of the subhalo size
@@ -97,31 +97,31 @@ class Tidal_radius(Profile):
             r_t = r[ind_test_ok]
         return(r_t)
     
-    def r_t_Jacobi_smooth_Springel(self, kind_main, R_main, kind_sub, r_s, n_x, r, r_max=1):
+    def r_t_Jacobi_smooth_Springel(self, kind_main, R_main, kind_sub, r_s, n_x, r_bin, r_max=1,):
         # Ok in fact I think that all mass are in unit of the mass of the main halo: to be checked
         # M_main and M_sub should be in the same unit
         #r = np.logspace(np.log10(r_min),np.log10(r_max),N_bin+1) # in unit of the subhalo size
-        r_s_main, n_x_main, log_slope_main = self.deal_with_kind_profile(kind_main, r, r_max) 
-        rho_s_main = self.get_rho_s(n_x_main,0,1/r_s_main) # rho_s is in r_s**3 unit
-        M_main_in_R_main = self.compute_mass_NFW(R_main,r_s_main,rho_s_main/r_s_main**3)
+        r_s_main, n_x_main = self.deal_with_kind_profile(kind_main, R_max=r_max) 
+        rho_s_main = self.get_rho_s(n_x_main, 0, 1/r_s_main) # rho_s is in r_s**3 unit
+        M_main_in_R_main = self.compute_mass_NFW(R_main, r_s_main, rho_s_main/r_s_main**3)
         if kind_sub["kind of profile"] == "abg":
             if (kind_sub["alpha"] == 1) and (kind_sub["beta"] == 3) and (kind_sub["gamma"] == 1): # NFW case
                 rho_s = self.get_rho_s(n_x, 0, 1/r_s) # rho_s is in r_s**3 unit
-                m_in_r = self.compute_mass_NFW(r, r_s, rho_s/r_s**3) # in the same unit as M_sub
+                m_in_r = self.compute_mass_NFW(r_bin, r_s, rho_s/r_s**3) # in the same unit as M_sub
             else :
-                print('not NFW')
+                print("not NFW")
         else :
-            print('not abg')
+            print("not abg")
         # Equation 12 of Springel+08
         dlog_M_dlog_r = self.dlog_M_dlog_r_NFW(R_main/r_s_main)
         r_t_test = R_main * (m_in_r/(M_main_in_R_main*(2-dlog_M_dlog_r)))**(1/3) # in unit of the main halo
-        chi_2 = (r_t_test - r)**2
+        chi_2 = (r_t_test - r_bin)**2
         ind_test_ok = np.where(chi_2 == np.min(chi_2))[0]
         if len(ind_test_ok) > 1:
-            print('problem')
+            print("problem")
         else:
-            r_t = r[ind_test_ok]
-        return(r_t)
+            r_t = r_bin[ind_test_ok]
+        return r_t
     
     def r_t_dens(self,kind_main,R_main, r_s, n_x, r):
         # Ok in fact I think that all mass are in unit of the mass of the main halo: to be checked

@@ -15,13 +15,15 @@ import numpy as np
 import sys
 import scipy.integrate as integrate
 from scipy.special import gammainc, gamma
+import matplotlib.pyplot as plt
+from typing import Dict
+
 import unsiotools.simulations.cfalcon as falcon
 cf = falcon.CFalcon()
-import matplotlib.pyplot as plt
 
 class Profile:
     
-    def abg_profile(self,r_minus_2,alpha,beta,gamma):
+    def abg_profile(self, r_minus_2, alpha, beta, gamma,):
         if alpha <=0 : # problematic case
             sys.exit('be carefull, alpha is negative or zero, it should be >0, alpha =',alpha)
         elif beta > 2 and gamma < 2 and gamma >= 0 : # standard case
@@ -43,7 +45,7 @@ class Profile:
         r_s = r_minus_2 * ((beta - 2)/(2 - gamma))**(1/alpha) # scale radius in Rvir unit
         #print('r_s =',r_s)
         n_profile = lambda x: (x**(-gamma)) * (1 + x**alpha)**((gamma - beta)/alpha) 
-        return(n_profile,r_s)
+        return(n_profile, r_s)
     
     def Einasto_profile(self,alpha_Einasto=0.17):
         if alpha_Einasto <= 0 :
@@ -121,7 +123,7 @@ class Profile:
         n_s = 1/(4*np.pi*my_int_tot[0]) # scale number density in r_s**(-3) unit
         return(n_s)
     
-    def deal_with_kind_profile(self, kind_profile, r_bin, R_max,):
+    def deal_with_kind_profile(self, kind_profile: Dict, r_bin: float=-1, R_max: float=1,):
         # deal with kind_profile:
         if kind_profile["kind of profile"] == "abg": # case of an alpha beta, gamma density profile
             concentration = kind_profile["concentration"]
@@ -130,19 +132,28 @@ class Profile:
             beta = kind_profile["beta"]
             gamma = kind_profile["gamma"]
             n_profile, r_s = self.abg_profile(r_minus_2, alpha, beta, gamma)
-            log_slope = self.compute_log_slope_abg(r_bin/r_s, alpha, beta, gamma)
+            if type(r_bin) == np.ndarray:
+                log_slope = self.compute_log_slope_abg(r_bin/r_s, alpha, beta, gamma)
         elif kind_profile["kind of profile"] == 'Einasto' : # case of an Einasto density profile
             concentration = kind_profile["concentration"]
             r_s = R_max/concentration # r_s = r_minus_2 for an Einasto profile
             alpha_Einasto = kind_profile["alpha"]
-            log_slope = self.compute_log_slope_Einasto(r_bin/r_s,alpha_Einasto) 
             n_profile = self.Einasto_profile(alpha_Einasto=alpha_Einasto)
+            if type(r_bin) == np.ndarray:
+                log_slope = self.compute_log_slope_Einasto(r_bin/r_s,alpha_Einasto) 
         elif kind_profile["kind of profile"] == 'single slope' : # case of a single slope profile
             delta = kind_profile["delta"]
             n_profile = self.single_slope_profile(delta)
             r_s = R_max
-            log_slope = delta * np.ones((len(r_bin)))
-        return(r_s, n_profile, log_slope)
+            if type(r_bin) == np.ndarray:
+                log_slope = delta * np.ones((len(r_bin)))
+        else: 
+            print("I did not implemented this kind of profile yet")
+        if type(r_bin) == np.ndarray:
+            return r_s, n_profile, log_slope
+        else :
+            return r_s, n_profile
+            
 
     def deal_with_kind_profile_old(self, kind_profile, r_bin, R_max) :
         # deal with kind_profile:
