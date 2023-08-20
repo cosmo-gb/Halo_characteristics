@@ -146,7 +146,7 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                                N_sub_m_bin: int=30, fac_fake: float=5,
                                res: float=0.001, r_shell_binning: str="logarithmic",
                                verbose: bool=False,) -> Dict:
-        ###################### set default kind of profiles ########################################
+        ###################### set default kind of profiles ##########################################
         if kind_profile_main == {}: # default density profile of the main halo (NFW with c=10)
             kind_profile_main = {"kind of profile": "abg",
                                  "concentration": 10,
@@ -161,14 +161,14 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
             kind_profile_pos_sub = {"kind of profile": "abg",
                                     "concentration": 1,
                                     "alpha": 1, "beta": 3, "gamma": 1}
-        ######################## set the halo mass #################################################
+        ######################## set the halo mass ####################################################
         # say that the mass is in unit of Milky-Way like halo, 
         # so Mass_main = 100 MW = 10**14 Msun/h and m_part = 0.001 MW = 10**9 M_sun/h by default    
         # res, R_min_main and R_max_main are in unit of the main halo size (so R_max_main = 1)
         M_main = M_tot * (1 - f_sub) # mass of the main smooth halo in MW mass
         N_main = int(M_main/m_part) # total number of particles in the main smooth halo
         M_sub = f_sub * M_tot # total mass of the subhalos in MW mass
-        ######################## main smooth halo generation #######################################
+        ######################## main smooth halo generation ##########################################
         main_halo = self.smooth_halo_creation(kind_profile_main, N_part=N_main, N_bin=N_bin_main,
                                               R_min=R_min_main, R_max=R_max_main, res=res,
                                               r_shell_binning=r_shell_binning,
@@ -176,12 +176,13 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         # main_halo contains: data, N_tot, N_part_bin, r_bin, r, r_ell, r_s, n_s, n_x
         # r_bin, r, r_ell, r_s are in unit of R_max_main
         # n_s is in unit r_s**(-3), n_x is the dimensionless profile n(x) of the main halo
-        ######################## subhalo mass function #############################################
+        ######################## subhalo mass function (fake) #########################################
         # I start by generating more (fake) suhbalos than necessary and I will remove the overage later
         # I am doing this because I have to remove subhalo mass because of tidal forces
-        dN_dm = self.subhalo_mass_function(M_sub*fac_fake, m_min, m_max, delta) # fake subhalo mass function
-        N_sub_tot = integrate.quad(lambda m: dN_dm(m), m_min, m_max) # approximation of the total number of subhalos
-        N_sub_tot = self.around_integer_from_float(N_sub_tot[0]) # approximation of the total number of subhalos
+        # fake subhalo mass function
+        dN_dm = self.subhalo_mass_function(M_sub*fac_fake, m_min, m_max, delta) 
+        N_sub_tot = integrate.quad(lambda m: dN_dm(m), m_min, m_max) # total number of subhalos (proxy)
+        N_sub_tot = self.around_integer_from_float(N_sub_tot[0]) # total number of subhalos (proxy)
         if verbose:
             print("Estimate of number of fake subhalos generated = ", N_sub_tot)
         ######################## masses of subhalos ##################################################
@@ -213,7 +214,7 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         halo_tot = main_halo["data"] 
         # N_part_sub_fin will contain the number of particles contained in each halo after tidal radius
         N_part_sub_fin = np.zeros((N_sub_fake), dtype=int) 
-        # hard coded, r_bin_sub is only used for the computation of the mass
+        # !!! hard coded: r_bin_sub is only used for the computation of the mass
         r_min, r_max, N_bin = 0.0001, 1, 1000
         r_bin_sub = np.logspace(np.log10(r_min), np.log10(r_max), N_bin+1) # in unit of the subhalo size
         r_t_sub = np.zeros((N_sub_fake)) # will contain tidal radius of all subhalos
@@ -254,42 +255,41 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                 ind_tide = np.where(r_in_sub < r_t_sub[s])[0]
                 sub_halo_pos = sub_halo[ind_tide] # keep only the particles inside the tidal radius
                 N_part_sub_fin[s] = len(ind_tide) # number of particles kept
-            ############################################################################################"
-            # I add the particles of this subhalo s to the total halo
+            # Finally I add the particles of this subhalo s to the total halo
             halo_tot = np.append(halo_tot, sub_halo_pos+sub_pos[s], axis=0) 
-        ##################################################################################################
-        # Now I finally remove the overage of subhalos that I previously generated
+        ##################### Remove the overage of subhalos ##########################################
         # fraction of subhalos that need to be removed: 
-        N_main_get = main_halo["N_tot"] # total number of particles in my smooth main halo
-        N_tot = M_tot/m_part
+        N_main_get = main_halo["N_tot"] # total number of particles in the smooth main halo
+        N_tot = M_tot/m_part # total number of particles that I want
         f_sub_fake = np.sum(N_part_sub_fin)/N_tot # subhalo mass fraction that I get with the overage
         f_remove = f_sub/f_sub_fake # inverse fraction of what I need to remove
-        ####################################################################### subhalo mass function
+        ##################### Generate the final (real i.e. without overage) subhalo mass function ####
         dN_dm = self.subhalo_mass_function(M_sub, m_min, m_max, delta) # real subhalo mass function
         # then I select a fraction of subhalo that I will keep
         ind_sub_use = self.select_subhalos(dN_dm, m_part, m_max, N_sub_m_bin,
                                            N_part_sub_fin*m_part, f_remove)
-        N_part_sub_halos = N_part_sub_fin[ind_sub_use]
-        f_sub_end = np.sum(N_part_sub_halos)/N_tot
+        N_part_sub_halos = N_part_sub_fin[ind_sub_use] # number of particles in the subhalo kept
+        f_sub_end = np.sum(N_part_sub_halos)/N_tot # final real fraction of subhalo obtained
         print("Desired fraction of subhalos =",f_sub)
         print("Obtained fraction of subhalo at the end =",f_sub_end)
-        ######################## finally I add these subhalos to the main halo
-        N_sub_halos = len(ind_sub_use)
-        halo_sub = halo_tot[N_main_get:]
+        ###################### Finally I add these subhalos to the main halo ###########################
+        N_subhalos = len(ind_sub_use) # total number of subhalos kept
+        halo_sub = halo_tot[N_main_get:] # contains all subhalo including fake ones
         halo_sub_keep = np.zeros((1,3))
         N_beg, N_end = 0, 0
-        for s in range(N_sub_fake) :
-            N_s_fake = N_part_sub_fin[s] 
+        for s in range(N_sub_fake): # loop on all fake subhalo
+            N_s_fake = N_part_sub_fin[s] # number of particles in the subhalo s after tidal effect
             ind_fake = np.where(ind_sub_use == s)[0]
-            if len(ind_fake) == 1 :
+            if len(ind_fake) == 1: # then I keep this subhalo s: it is a real one
                 N_end = N_end +  N_s_fake
-                halo_sub_keep = np.append(halo_sub_keep,halo_sub[N_beg:N_end],axis=0)
+                halo_sub_keep = np.append(halo_sub_keep, halo_sub[N_beg:N_end], axis=0)
                 N_beg = N_beg +  N_s_fake
-            else :
+            else : # then I do not keep this subhalo s, it is a fake subhalo
                 N_end = N_end +  N_s_fake
                 N_beg = N_beg +  N_s_fake
-        halo_tot = np.append(main_halo["data"],halo_sub_keep[1:],axis=0)
-        ################################################################################################
+        # the final total halo (main smooth + real subhalos) is halo_tot
+        halo_tot = np.append(main_halo["data"], halo_sub_keep[1:], axis=0)
+        ######################## Verbose ###############################################################
         if verbose:
             f_sub_init = np.sum(N_part_in_sub)/N_tot
             print("Fraction of fake subhalos generated =", f_sub_init, 
@@ -301,7 +301,8 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
             print("Total number of particles in the halo =", len(halo_tot))
         halo_with_sub = {"halo_tot": halo_tot, "subhalo_pos": sub_pos, "N_sub_tot": N_sub_tot,
                          "m_sub": m_sub, "R_max_sub": R_max_sub, "N_part_in_sub": N_part_in_sub,
-                         "N_part_sub_fin": N_part_sub_fin, "main_halo": main_halo, "f_sub_end": f_sub_end}
+                         "N_part_sub_fin": N_part_sub_fin, "main_halo": main_halo, 
+                         "f_sub_end": f_sub_end, "N_subhalos": N_subhalos}
         return halo_with_sub
     
     def generate_many(self,N=2):
