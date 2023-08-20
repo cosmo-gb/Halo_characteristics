@@ -228,30 +228,32 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         ########################### loop on each individual subhalo ###############################
         for s in range(N_sub_fake) : # loop on each individual subhalo
             kind_profile_sub["concentration"] = c_sub[s]
-            # be carefull, I assumed that my subhalos are all sphericals
             ####################### generation of the subhalo s ###################################
+            # be carefull, I assumed that my subhalos are all sphericals
             sub_halo = self.smooth_halo_creation(kind_profile_sub, N_part=N_part_in_sub[s], 
                                                  N_bin=N_bin_subalos[s],
                                                  R_min=0, R_max=R_max_sub[s], res=res,
                                                  r_shell_binning=r_shell_binning)
                                                  #a_ax=a_ax_main,b_ax=b_ax_main,c_ax=c_ax_main)
-            ##################################################################################################
-            r_s, n_x = self.deal_with_kind_profile(kind_profile_sub, R_max=r_max) 
+            # parameter of the subhalo s
+            r_s, n_x = self.deal_with_kind_profile(kind_profile_sub) 
+            # tidal radius of the subhalo s
             r_t_sub[s] = self.r_t_Jacobi_smooth_Springel(kind_profile_main, r_sub[s], kind_profile_sub,
                                                          r_s, n_x, r_bin_sub)
-            r_t_sub[s] *= R_max_sub[s] # in the main halo unit
-            ####################################################################################################
-            # now I apply tidal effect and remove the outer part of subhalos
+            r_t_sub[s] *= R_max_sub[s] # set in the main halo unit
+            ####################### apply tidal effect ############################################
+            # now I apply tidal effect and remove the outer part of the subhalo s
             sub_halo = sub_halo["data"]
             r_in_sub = np.sqrt(sub_halo[:,0]**2 + sub_halo[:,1]**2 + sub_halo[:,2]**2) # in the halo unit
-            if np.max(r_in_sub) < r_t_sub[s] : # normally this is not possible ! the tidal radius is smaller than the subhalo radius
+            if np.max(r_in_sub) < r_t_sub[s] : # normally this is not possible ! 
+                # case where the tidal radius is larger than the subhalo size
                 N_part_sub_fin[s] = 0
                 sub_halo_pos = sub_halo
-                print("Problem: the tidal radius should be smaller than the subhalo radius")
-            else :
+                print("Problem: the tidal radius should be smaller than the subhalo size")
+            else : # otherwise: remove the particles outside the tidal radius
                 ind_tide = np.where(r_in_sub < r_t_sub[s])[0]
-                sub_halo_pos = sub_halo[ind_tide]
-                N_part_sub_fin[s] = len(ind_tide)
+                sub_halo_pos = sub_halo[ind_tide] # keep only the particles inside the tidal radius
+                N_part_sub_fin[s] = len(ind_tide) # number of particles kept
             ############################################################################################"
             # I add the particles of this subhalo s to the total halo
             halo_tot = np.append(halo_tot, sub_halo_pos+sub_pos[s], axis=0) 
