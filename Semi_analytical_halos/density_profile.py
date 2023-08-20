@@ -121,7 +121,30 @@ class Profile:
         n_s = 1/(4*np.pi*my_int_tot[0]) # scale number density in r_s**(-3) unit
         return(n_s)
     
-    def deal_with_kind_profile(self, kind_profile, r_bin, R_max) :
+    def deal_with_kind_profile(self, kind_profile, r_bin, R_max,):
+        # deal with kind_profile:
+        if kind_profile["kind of profile"] == "abg": # case of an alpha beta, gamma density profile
+            concentration = kind_profile["concentration"]
+            r_minus_2 = R_max/concentration # r_s = r_minus_2 for an NFW profile only
+            alpha = kind_profile["alpha"]
+            beta = kind_profile["beta"]
+            gamma = kind_profile["gamma"]
+            n_profile, r_s = self.abg_profile(r_minus_2, alpha, beta, gamma)
+            log_slope = self.compute_log_slope_abg(r_bin/r_s, alpha, beta, gamma)
+        elif kind_profile["kind of profile"] == 'Einasto' : # case of an Einasto density profile
+            concentration = kind_profile["concentration"]
+            r_s = R_max/concentration # r_s = r_minus_2 for an Einasto profile
+            alpha_Einasto = kind_profile["alpha"]
+            log_slope = self.compute_log_slope_Einasto(r_bin/r_s,alpha_Einasto) 
+            n_profile = self.Einasto_profile(alpha_Einasto=alpha_Einasto)
+        elif kind_profile["kind of profile"] == 'single slope' : # case of a single slope profile
+            delta = kind_profile["delta"]
+            n_profile = self.single_slope_profile(delta)
+            r_s = R_max
+            log_slope = delta * np.ones((len(r_bin)))
+        return(r_s, n_profile, log_slope)
+
+    def deal_with_kind_profile_old(self, kind_profile, r_bin, R_max) :
         # deal with kind_profile:
         if kind_profile[0] == 'abg' : # case of an alpha beta, gamma density profile
             concentration = kind_profile[1]

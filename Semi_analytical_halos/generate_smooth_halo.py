@@ -73,33 +73,6 @@ class Smooth_halo(Profile):
             r_ell[beg:end] = np.sqrt( x[beg:end]**2 + (y[beg:end]/Q)**2 + (z[beg:end]/S)**2 )
         return(x,y,z,r_ell,N_tot)
     
-    def deal_with_kind_profile(self, kind_profile, r_bin, R_max) :
-        # deal with kind_profile:
-        if kind_profile[0] == 'abg' : # case of an alpha beta, gamma density profile
-            concentration = kind_profile[1]
-            r_minus_2 = R_max/concentration # r_s = r_minus_2 for an NFW profile only
-            if len(kind_profile) == 2 : # by default, it is an NFW profile
-                alpha, beta, gamma = 1, 3, 1
-            else :
-                alpha, beta, gamma = kind_profile[2:]  
-            n_profile, r_s = self.abg_profile(r_minus_2, alpha, beta, gamma)
-            log_slope = self.compute_log_slope_abg(r_bin/r_s,alpha,beta,gamma)
-        elif kind_profile[0] == 'Einasto' : # case of an Einasto density profile
-            concentration = kind_profile[1]
-            r_s = R_max/concentration # r_s = r_minus_2 for an Einasto profile
-            if len(kind_profile) == 2 : # by default, it is has alpha_Einasto=0.17
-                alpha_Einasto = 0.17
-            else :
-                alpha_Einasto = kind_profile[2]  
-            log_slope = self.compute_log_slope_Einasto(r_bin/r_s,alpha_Einasto) 
-            n_profile = self.Einasto_profile(alpha_Einasto=alpha_Einasto)
-        elif kind_profile[0] == 'single slope' : # case of a single slope profile
-            delta = kind_profile[1]
-            n_profile = self.single_slope_profile(delta)
-            r_s = R_max
-            log_slope = delta * np.ones((len(r_bin)))
-        return(r_s, n_profile, log_slope)
-    
     def plot_data(self,x,y,x_min=-1,x_max=1,y_min=-1,y_max=1) :
         plt.rc('font', family='serif')
         plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.top'] = True
@@ -118,7 +91,7 @@ class Smooth_halo(Profile):
         plt.show()
         return()
 
-    def beauty_plot_colorbar(self,pos,path_and_name='',pixels=1000,r_max=1,ax_1=0,ax_2=1) :
+    def beauty_plot_colorbar(self,pos,path_and_name='',pixels=1000,r_max=1,ax_1=0,ax_2=1,) :
         ############################################################################################
         N_part = len(pos)
         mass_array = np.ones((N_part),dtype=np.float32)
@@ -185,24 +158,30 @@ class Smooth_halo(Profile):
     
     def smooth_halo_creation(self, kind_profile,
                              N_part=10000, N_bin=30, R_min=0, R_max=1,
-                             res=0.01, r_shell_binning='logarithmic', a_ax=1,b_ax=1,c_ax=1):
-        ''' # This is the main fuction of this program, it generates smooth halos at position x,y,z = 0,0,0
-        # It creates particles in a halo of a given density profile 
-        # kind_profile should be a list containing the kind of profile you want.
-        # its first element is a string: either abg, Einasto, or single (for single slope)
-        # in the case of abg or Einasto, the concentration should also be given as a second parameter of the list,
-        # while in the case of single, the logarithmic slope delta shoulb be given
-        # N_part is the total number of particles contained in the halo at the end
-        # N_bin is the number of bins for the shells
-        # R_min and R_max are the minimum and maximum radius of the halo
-        # res is the resolution i.e. the size of the firs shell
-        # the radius can be binned linearly but by default it is binned logarithmically
-        # the halo shape is given by a_ax, b_ax, c_ax (dimensionless so between 0 and 1), which correspond to the 3 mains axis
-        # it can be either float numbers (constant shape) or numpy arrays (shape varyng with the radius)
-        # This function returns data, which are the particle positions in the same unit as R_min and R_max
-        # and it also returns the total number of particles N_tot, the number of particles in each bin N_part_bin,
-        # the radius of each bin (or shell) r_bin, the radius of each particle r
-        # and the ellipsoidal radius of each particle r_ell
+                             res=0.01, r_shell_binning='logarithmic', a_ax=1, b_ax=1, c_ax=1,):
+        ''' 
+        This is the main fuction of this program, it generates smooth halos at position x,y,z = 0,0,0
+        It creates particles in a halo of a given analytical density profile.
+        Parameters:
+        -kind_profile should be a list containing the kind of profile you want.
+        its first element is a string: either abg, Einasto, or single (for single slope)
+        in the case of abg or Einasto, the concentration should also be given as a second parameter of the list,
+        while in the case of single, the logarithmic slope delta shoulb be given
+        -N_part is the total number of particles contained in the halo at the end
+        -N_bin is the number of bins for the shells
+        -R_min and R_max are the minimum and maximum radius of the halo
+        -res is the resolution i.e. the size of the firs shell
+        -r_shell_binning: the radius can be binned linearly but by default it is binned logarithmically
+        -a_ax, b_ax, c_ax: the halo shape is given by a_ax, b_ax, c_ax (dimensionless so between 0 and 1),
+        which correspond to the 3 mains axis
+        it can be either float numbers (constant shape) or numpy arrays (shape varyng with the radius)
+        This function returns:
+        -data: which are the particle positions in the same unit as R_min and R_max
+        -N_tot: the total number of particles N_tot, 
+        -N_part_bin: the number of particles in each bin N_part_bin,
+        -r_bin: the radius of each bin (or shell) r_bin
+        -r: the radius of each particle r
+        -r_ell: and the ellipsoidal radius of each particle r_ell
         '''
         ####################################################################### deal with x: the radius of the shells
         if r_shell_binning == 'logarithmic' : # shell bining with logarithmic radius bin
@@ -272,7 +251,7 @@ class Smooth_halo(Profile):
         n_s = n_s/r_s**3
         return(data, N_tot, N_part_bin, r_bin, r, r_ell, r_s, n_s, n_x)
     
-    def do_many_times(self,N_times):
+    def do_many_times(self, N_times,):
         c = 10
         kind_profile = ['abg',c]
         N_tot_th = 10000
@@ -286,7 +265,7 @@ class Smooth_halo(Profile):
     
     
 if __name__ == '__main__':
-    halo = smooth_halo()
+    halo = Smooth_halo()
     c = 10
     kind_profile = ['abg', c]
     my_halo = halo.smooth_halo_creation(kind_profile, b_ax=0.5, c_ax=0.5)

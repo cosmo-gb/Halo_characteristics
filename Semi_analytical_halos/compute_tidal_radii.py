@@ -97,17 +97,17 @@ class Tidal_radius(Profile):
             r_t = r[ind_test_ok]
         return(r_t)
     
-    def r_t_Jacobi_smooth_Springel(self,kind_main,R_main,kind_sub,r_s,n_x,r,r_max=1):
+    def r_t_Jacobi_smooth_Springel(self, kind_main, R_main, kind_sub, r_s, n_x, r, r_max=1):
         # Ok in fact I think that all mass are in unit of the mass of the main halo: to be checked
         # M_main and M_sub should be in the same unit
         #r = np.logspace(np.log10(r_min),np.log10(r_max),N_bin+1) # in unit of the subhalo size
         r_s_main, n_x_main, log_slope_main = self.deal_with_kind_profile(kind_main, r, r_max) 
         rho_s_main = self.get_rho_s(n_x_main,0,1/r_s_main) # rho_s is in r_s**3 unit
         M_main_in_R_main = self.compute_mass_NFW(R_main,r_s_main,rho_s_main/r_s_main**3)
-        if kind_sub[0] == 'abg' :
-            if len(kind_sub) == 2 : # NFW case
-                rho_s = self.get_rho_s(n_x,0,1/r_s) # rho_s is in r_s**3 unit
-                m_in_r = self.compute_mass_NFW(r,r_s,rho_s/r_s**3) # in the same unit as M_sub
+        if kind_sub["kind of profile"] == "abg":
+            if (kind_sub["alpha"] == 1) and (kind_sub["beta"] == 3) and (kind_sub["gamma"] == 1): # NFW case
+                rho_s = self.get_rho_s(n_x, 0, 1/r_s) # rho_s is in r_s**3 unit
+                m_in_r = self.compute_mass_NFW(r, r_s, rho_s/r_s**3) # in the same unit as M_sub
             else :
                 print('not NFW')
         else :

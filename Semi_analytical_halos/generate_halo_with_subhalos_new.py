@@ -7,16 +7,19 @@ Created on Sun Oct  2 13:43:59 2022
 """
 
 '''
-This script is the new version of a code to generate halo from profile with subhalos
+This script allows to generate semi-analytical halo with subhalos from analytical density profile.
 '''
 
+# import standard libraries
 import numpy as np
 import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import random
+from typing import Dict
 
-from generate_smooth_halo import Smooth_halo
-from compute_tidal_radii import Tidal_radius
+# import my class
+from generate_smooth_halo import Smooth_halo # for generate smooth halo
+from compute_tidal_radii import Tidal_radius # for compute the tidal radius of subhalo
 
 class Halo_with_sub(Smooth_halo, Tidal_radius):
     
@@ -132,25 +135,43 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
             rho_minus_2 = (N_part/(r_minus_2**3))/(4*np.pi*my_int_tot[0]) # scale number density, in unit of the size of the subhalo cube
         return(rho_minus_2)
     
-    def generate_halo_with_sub(self, kind_profile_main, kind_profile_sub, kind_profile_pos_sub,
-                               M_tot=100,m_part=0.001,R_min_main=0,R_max_main=1,
-                               f_sub=0.1,m_min=0.01,m_max=10,delta=2,
-                               N_bin_main=30,a_ax_main=1,b_ax_main=1,c_ax_main=1,
-                               N_sub_m_bin=30,fac_fake=5,
-                               res=0.001,r_shell_binning='logarithmic',verbose=False):
-        ''' This function is the main function of this class.
-        '''
+    def generate_halo_with_sub(self, kind_profile_main: Dict={}, 
+                               kind_profile_sub: Dict={}, 
+                               kind_profile_pos_sub: Dict={},
+                               M_tot: float=100, m_part: float=0.001,
+                               R_min_main: float=0, R_max_main: float=1,
+                               f_sub: float=0.1, m_min: float=0.01, m_max: float=10,
+                               delta: float=2, N_bin_main: int=30, 
+                               a_ax_main: float=1, b_ax_main: float=1, c_ax_main: float=1,
+                               N_sub_m_bin: int=30, fac_fake: float=5,
+                               res: float=0.001, r_shell_binning: str="logarithmic",
+                               verbose: bool=False,):
+        ###################### set default kind of profiles ########################################
+        if kind_profile_main == {}: # default density profile of the main halo (NFW)
+            kind_profile_main = {"kind of profile": "abg",
+                                 "concentration": 10,
+                                 "alpha": 1, "beta": 3, "gamma": 1}
+        if kind_profile_sub == {}: # default density profile of the subhalos 
+            # (NFW, the rest is not implemented yet, see tidal radius r_t_Jacobi_smooth_Springel funstion
+            kind_profile_sub = {"kind of profile": "abg",
+                                "concentration": 10,
+                                "alpha": 1, "beta": 3, "gamma": 1}
+        if kind_profile_pos_sub == {}: # default spatial distributions of the subhalos
+            kind_profile_pos_sub = {"kind of profile": "abg",
+                                    "concentration": 1,
+                                    "alpha": 1, "beta": 3, "gamma": 1}
+        ######################## set the halo mass #################################################
         # say that the mass is in unit of Milky-Way like halo, 
         # so Mass_main = 100 MW = 10**14 Msun/h and m_part = 0.001 MW = 10**9 M_sun/h by default    
         # res, R_min_main and R_max_main are in unit of the main halo size (so R_max_main = 1)
         M_main = M_tot * (1 - f_sub) # mass of the main smooth halo in MW mass
         N_main = int(M_main/m_part) # total number of particles in the main smooth halo
         M_sub = f_sub * M_tot # total mass of the subhalos in MW mass
-        ####################################################################### main smooth halo generation
-        main_halo = self.smooth_halo_creation(kind_profile_main,N_part=N_main,N_bin=N_bin_main,
-                                              R_min=R_min_main,R_max=R_max_main,res=res,
+        ######################## main smooth halo generation #######################################
+        main_halo = self.smooth_halo_creation(kind_profile_main, N_part=N_main, N_bin=N_bin_main,
+                                              R_min=R_min_main, R_max=R_max_main, res=res,
                                               r_shell_binning=r_shell_binning,
-                                              a_ax=a_ax_main,b_ax=b_ax_main,c_ax=c_ax_main)
+                                              a_ax=a_ax_main, b_ax=b_ax_main, c_ax=c_ax_main,)
         # main_halo contains: data, N_tot, N_part_bin, r_bin, r, r_ell, r_s, n_s, n_x
         # r_bin, r, r_ell, r_s are in unit of R_max_main
         # n_s is in unit r_s**(-3), n_x is the dimensionless profile n(x) of the main halo
@@ -274,13 +295,18 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
     
     
 if __name__ == '__main__':
-    halo = halo_with_sub() ############################ Be carefull, here !!!!!!!!!
+    halo = Halo_with_sub() ############################ Be carefull, here !!!!!!!!!
     c_main, c_sub, c_sub_pos = 10, 10, 1
-    kind_profile_main = ['abg',c_main]
-    kind_profile_sub = ['abg',c_sub]
-    kind_profile_pos_sub = ['abg',c_sub_pos]
-    my_halo = halo.generate_halo_with_sub(kind_profile_main, kind_profile_sub, kind_profile_pos_sub,
-                                          a_ax_main=1,b_ax_main=0.2,c_ax_main=0.2)
+    kind_profile_main = {"kind of profile": "abg",
+                         "concentration": 10,
+                         "alpha": 1, "beta": 3, "gamma": 1}
+    kind_profile_sub = {"kind of profile": "abg",
+                        "concentration": 10,
+                        "alpha": 1, "beta": 3, "gamma": 1}
+    kind_profile_pos_sub = {"kind of profile": "abg",
+                            "concentration": 1,
+                            "alpha": 1, "beta": 3, "gamma": 1}
+    my_halo = halo.generate_halo_with_sub() #kind_profile_main, kind_profile_sub, kind_profile_pos_sub)
     data = my_halo[0]
     main_halo = my_halo[-2]
     N_part_main = main_halo[1]
