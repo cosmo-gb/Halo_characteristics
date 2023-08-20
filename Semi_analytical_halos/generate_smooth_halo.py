@@ -18,6 +18,7 @@ import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import MultipleLocator
+from typing import Dict
 
 import unsiotools.simulations.cfalcon as falcon
 cf = falcon.CFalcon()
@@ -156,9 +157,11 @@ class Smooth_halo(Profile):
         plt.show()
         return()
     
-    def smooth_halo_creation(self, kind_profile,
-                             N_part=10000, N_bin=30, R_min=0, R_max=1,
-                             res=0.01, r_shell_binning='logarithmic', a_ax=1, b_ax=1, c_ax=1,):
+    def smooth_halo_creation(self, kind_profile: Dict,
+                             N_part: int=10000, N_bin: int=30,
+                             R_min: float=0, R_max: float=1, res: float=0.01,
+                             r_shell_binning: str='logarithmic',
+                             a_ax: float=1, b_ax: float=1, c_ax: float=1,) -> Dict:
         ''' 
         This is the main fuction of this program, it generates smooth halos at position x,y,z = 0,0,0
         It creates particles in a halo of a given analytical density profile.
@@ -175,7 +178,7 @@ class Smooth_halo(Profile):
         -a_ax, b_ax, c_ax: the halo shape is given by a_ax, b_ax, c_ax (dimensionless so between 0 and 1),
         which correspond to the 3 mains axis
         it can be either float numbers (constant shape) or numpy arrays (shape varyng with the radius)
-        This function returns:
+        This function returns a dictionnary which contains:
         -data: which are the particle positions in the same unit as R_min and R_max
         -N_tot: the total number of particles N_tot, 
         -N_part_bin: the number of particles in each bin N_part_bin,
@@ -249,7 +252,12 @@ class Smooth_halo(Profile):
         data = data * r_s
         r_bin, r, r_ell = r_bin * r_s, r * r_s, r_ell * r_s
         n_s = n_s/r_s**3
-        return(data, N_tot, N_part_bin, r_bin, r, r_ell, r_s, n_s, n_x)
+        smooth_halo = {"data": data, "N_tot": N_tot,
+                       "N_part_bin": N_part_bin, "r_bin": r_bin,
+                       "r": r, "r_ell": r_ell,
+                       "r_s": r_s,"n_s": n_s, "n_x": n_x}
+        return smooth_halo
+    #(data, N_tot, N_part_bin, r_bin, r, r_ell, r_s, n_s, n_x)
     
     def do_many_times(self, N_times,):
         c = 10
