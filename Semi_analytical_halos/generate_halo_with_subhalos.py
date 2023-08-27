@@ -80,7 +80,18 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                            N_sub_m_bin: int,) -> \
                            Tuple[np.ndarray[int], np.ndarray[np.float32], 
                                  int, np.ndarray[np.float32]]:
-        
+        """
+        Computes the masses of individual subhalo in the range [m_min, m_max], following the distribution of dn_dm
+        Input parameters:
+        - dN_dm: function of m, give the number of subhalo in the range [m, m+dm]
+        - m_min, m_max: minimal and maximal subhalo mass
+        - N_sub_m_bin: number of mass bins considered between m_min and m_max
+        returns:
+        - N_sub_bin: np.array of int, number of subhalos inside each mass bin
+        - m_sub: np.array of float32, mass of each individual subhalo
+        - N_sub_tot: total number of subhalos
+        - m_bin: np.array of float, mass range of each bin
+        """
         m_bin = 10**(np.linspace(np.log10(m_min), np.log10(m_max), N_sub_m_bin+1))
         N_sub_bin = np.zeros((N_sub_m_bin+1), dtype=int) # it contains N_sub_m_bin + 1 elements
         for b in range(N_sub_m_bin) :
@@ -88,14 +99,14 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
             my_int = integrate.quad(lambda m: dN_dm(m), m_bin[b], m_bin[b+1])
             N_sub_bin[b] = int(np.round(my_int[0], decimals=0)) # number of subhalos by subhalo mass bin
         N_sub_tot = np.sum(N_sub_bin)
-        m_sub = np.zeros((N_sub_tot))
+        m_sub = np.zeros((N_sub_tot), dtype=np.float32)
         N_start, N_end = 0, N_sub_bin[0]
         for b in range(N_sub_m_bin) :
             m_sub[N_start:N_end] = np.array(np.random.uniform(m_bin[b], m_bin[b+1],N_sub_bin[b]),
                                             dtype=np.float32)
             N_start += N_sub_bin[b]
             N_end += N_sub_bin[b+1]
-        return N_sub_bin, m_sub, N_sub_tot, m_bin)
+        return N_sub_bin, m_sub, N_sub_tot, m_bin
     
     def select_subhalos(self, dN_dm, m_min, m_max, N_sub_m_bin, m_sub, f_remove) :
         ''' Select a fraction f_remove of suhalos that has been created and
