@@ -62,10 +62,12 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         Generate the subhalo mass function dN/dm.
         dN/dm is the number of subhalo of in the mass range [m, m+dm]:
         dN/dm = A * m**(-delta)
+        #############################################################################
         Input parameters:
         - M_sub: total subhalo mass
         - m_min, m_max: subhalo mass minimum and maximum allowed
         - delta: parameter of the previous formula
+        #############################################################################
         Returns:
         - lambda function: dN_dm(m) i.e. number of subhalo of mass range [m, m+dm]
         """
@@ -81,11 +83,14 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                            Tuple[np.ndarray[int], np.ndarray[np.float32], 
                                  int, np.ndarray[np.float32]]:
         """
-        Computes the masses of individual subhalo in the range [m_min, m_max], following the distribution of dn_dm
+        Computes the masses of individual subhalo in the range [m_min, m_max], 
+        following the distribution of dN_dm
+        ##########################################################################
         Input parameters:
         - dN_dm: function of m, give the number of subhalo in the range [m, m+dm]
         - m_min, m_max: minimal and maximal subhalo mass
         - N_sub_m_bin: number of mass bins considered between m_min and m_max
+        ##########################################################################
         returns:
         - N_sub_bin: np.array of int, number of subhalos inside each mass bin
         - m_sub: np.array of float32, mass of each individual subhalo
@@ -108,27 +113,44 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
             N_end += N_sub_bin[b+1]
         return N_sub_bin, m_sub, N_sub_tot, m_bin
     
-    def select_subhalos(self, dN_dm, m_min, m_max, N_sub_m_bin, m_sub, f_remove) :
-        ''' Select a fraction f_remove of suhalos that has been created and
-        that are contained in m_sub
+    def select_subhalos(self, dN_dm: Callable[[float], float], m_min: float, m_max: float,
+                        N_sub_m_bin: int, m_sub: np.ndarray[np.float32], f_keep: float,) \
+                        -> np.ndarray[int]:
+        ''' 
+        Select a fraction f_keep of suhalos among all the fake subhalos.
+        #########################################################################
+        Input parameters:
+        - dN_dm: function of m, number of subhalo in a given mass range [m, m+dm]
+        - m_min, m_max: float, minimum and maximum subhalo mass
+        - N_sub_m_bin: int, number of mass bin
+        - m_sub: np.array of float32, mass of all individual subhalos
+        - f_keep: float, fraction of subhalos I keep
+        #########################################################################
+        Returns:
+        - ind_b_use: np.array of int, indices of subhalos I will keep
         '''
+        # mass bin range
         m_bin = 10**(np.linspace(np.log10(m_min), np.log10(m_max), N_sub_m_bin+1))
-        N_sub_bin = np.zeros((N_sub_m_bin+1),dtype=int) # it contains N_sub_m_bin + 1 elements
-        ind_b_use = np.array((),dtype=int)
+        # number of subhalo in a given mass range
+        N_sub_bin = np.zeros((N_sub_m_bin+1), dtype=int) # it contains N_sub_m_bin + 1 elements
+        ind_b_use = np.array((), dtype=int)
         for b in range(N_sub_m_bin) :
             my_int = integrate.quad(lambda m: dN_dm(m), m_bin[b], m_bin[b+1])
-            # number of subhalos by subhalo mass bin
+            # number of subhalos by subhalo mass range
             N_sub_bin[b] = self.around_integer_from_float(my_int[0]) 
+            # indice of the fake subhalos in the mass range b
             ind_bin_b = np.where( (m_sub <= m_bin[b+1]) & (m_sub > m_bin[b]) )[0]
-            N_sel = len(ind_bin_b) * f_remove
+            # number of these subhalos that I should keep
+            N_sel = len(ind_bin_b) * f_keep
             N_sel_int = self.around_integer_from_float(N_sel)
             if N_sel_int <= len(ind_bin_b) :
                 # then I select the subhalo that I keep
-                ind_sel = random.sample(range(len(ind_bin_b)),N_sel_int)
+                ind_sel = random.sample(range(len(ind_bin_b)), N_sel_int)
             else :
                 ind_sel = range(len(ind_bin_b))
-            ind_b_use = np.append(ind_b_use,ind_bin_b[ind_sel])
-        return(ind_b_use)
+            # indice of all fake subhalos that I will keep
+            ind_b_use = np.append(ind_b_use, ind_bin_b[ind_sel])
+        return ind_b_use
                    
     def c_M(self,mass,A=5,B=-0.1) :
         # mass should be in unit 10**12 M_sun/h
@@ -303,12 +325,12 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         N_main_get = main_halo["N_tot"] # total number of particles in the smooth main halo
         N_tot = M_tot/m_part # total number of particles that I want
         f_sub_fake = np.sum(N_part_sub_fin)/N_tot # subhalo mass fraction that I get with the overage
-        f_remove = f_sub/f_sub_fake # inverse fraction of what I need to remove
+        f_keep = f_sub/f_sub_fake # fraction of subhalo that I need to keep
         ##################### Generate the final (real i.e. without overage) subhalo mass function ####
         dN_dm = self.subhalo_mass_function(M_sub, m_min, m_max, delta) # real subhalo mass function
         # then I select a fraction of subhalo that I will keep
         ind_sub_use = self.select_subhalos(dN_dm, m_part, m_max, N_sub_m_bin,
-                                           N_part_sub_fin*m_part, f_remove)
+                                           N_part_sub_fin*m_part, f_keep)
         N_part_sub_halos = N_part_sub_fin[ind_sub_use] # number of particles in the subhalo kept
         f_sub_end = np.sum(N_part_sub_halos)/N_tot # final real fraction of subhalo obtained
         print("Desired fraction of subhalos =",f_sub)
