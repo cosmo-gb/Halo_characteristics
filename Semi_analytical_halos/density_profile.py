@@ -152,14 +152,14 @@ class Profile:
             n_profile, r_s = self.abg_profile(r_minus_2, alpha, beta, gamma)
             if type(r_bin) == np.ndarray:
                 log_slope = self.compute_log_slope_abg(r_bin/r_s, alpha, beta, gamma)
-        elif kind_profile["kind of profile"] == 'Einasto' : # case of an Einasto density profile
+        elif kind_profile["kind of profile"] == "Einasto" : # case of an Einasto density profile
             concentration = kind_profile["concentration"]
             r_s = R_max/concentration # r_s = r_minus_2 for an Einasto profile
             alpha_Einasto = kind_profile["alpha"]
             n_profile = self.Einasto_profile(alpha_Einasto=alpha_Einasto)
             if type(r_bin) == np.ndarray:
                 log_slope = self.compute_log_slope_Einasto(r_bin/r_s,alpha_Einasto) 
-        elif kind_profile["kind of profile"] == 'single slope' : # case of a single slope profile
+        elif kind_profile["kind of profile"] == "single slope" : # case of a single slope profile
             delta = kind_profile["delta"]
             n_profile = self.single_slope_profile(delta)
             r_s = R_max
@@ -171,35 +171,7 @@ class Profile:
             return r_s, n_profile, log_slope
         else :
             return r_s, n_profile
-            
-
-    def deal_with_kind_profile_old(self, kind_profile, r_bin, R_max) :
-        # deal with kind_profile:
-        if kind_profile[0] == 'abg' : # case of an alpha beta, gamma density profile
-            concentration = kind_profile[1]
-            r_minus_2 = R_max/concentration # r_s = r_minus_2 for an NFW profile only
-            if len(kind_profile) == 2 : # by default, it is an NFW profile
-                alpha, beta, gamma = 1, 3, 1
-            else :
-                alpha, beta, gamma = kind_profile[2:]  
-            n_profile, r_s = self.abg_profile(r_minus_2, alpha, beta, gamma)
-            log_slope = self.compute_log_slope_abg(r_bin/r_s,alpha,beta,gamma)
-        elif kind_profile[0] == 'Einasto' : # case of an Einasto density profile
-            concentration = kind_profile[1]
-            r_s = R_max/concentration # r_s = r_minus_2 for an Einasto profile
-            if len(kind_profile) == 2 : # by default, it is has alpha_Einasto=0.17
-                alpha_Einasto = 0.17
-            else :
-                alpha_Einasto = kind_profile[2]  
-            log_slope = self.compute_log_slope_Einasto(r_bin/r_s,alpha_Einasto) 
-            n_profile = self.Einasto_profile(alpha_Einasto=alpha_Einasto)
-        elif kind_profile[0] == 'single slope' : # case of a single slope profile
-            delta = kind_profile[1]
-            n_profile = self.single_slope_profile(delta)
-            r_s = R_max
-            log_slope = delta * np.ones((len(r_bin)))
-        return(r_s, n_profile, log_slope)
-    
+                
     def compute_logarithmic_derivative(self,r,rho) :
         # this function computes the logarithmic derivative of the function rho(r)
         # using (rho(r+h)-rho(r-h))/(2*h)

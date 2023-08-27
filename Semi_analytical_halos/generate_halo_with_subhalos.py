@@ -253,8 +253,7 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         - verbose: bool, to get more info
         ############################################################################################
         returns:
-        - halo_with_sub: 
-
+        - halo_with_sub:
         """
         ###################### set default kind of profiles ##########################################
         if kind_profile_main == {}: # default density profile of the main halo (NFW with c=10)

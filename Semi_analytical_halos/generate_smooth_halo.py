@@ -157,7 +157,7 @@ class Smooth_halo(Profile):
         plt.show()
         return()
     
-    def smooth_halo_creation(self, kind_profile: Dict,
+    def smooth_halo_creation(self, kind_profile: Dict={},
                              N_part: int=10000, N_bin: int=30,
                              R_min: float=0, R_max: float=1, res: float=0.01,
                              r_shell_binning: str='logarithmic',
@@ -165,27 +165,36 @@ class Smooth_halo(Profile):
         ''' 
         This is the main fuction of this program, it generates smooth halos at position x,y,z = 0,0,0
         It creates particles in a halo of a given analytical density profile.
-        Parameters:
-        -kind_profile should be a list containing the kind of profile you want.
-        its first element is a string: either abg, Einasto, or single (for single slope)
-        in the case of abg or Einasto, the concentration should also be given as a second parameter of the list,
-        while in the case of single, the logarithmic slope delta shoulb be given
-        -N_part is the total number of particles contained in the halo at the end
-        -N_bin is the number of bins for the shells
-        -R_min and R_max are the minimum and maximum radius of the halo
-        -res is the resolution i.e. the size of the firs shell
-        -r_shell_binning: the radius can be binned linearly but by default it is binned logarithmically
-        -a_ax, b_ax, c_ax: the halo shape is given by a_ax, b_ax, c_ax (dimensionless so between 0 and 1),
+        ############################################################################################
+        Input parameters:
+        - kind_profile: Dict, contains the kind of profile you want.
+        its first element is a string, either abg, Einasto, or single slope.
+        In the case of abg or Einasto, the concentration should also be given as a second parameter
+        while in the case of single slope, the logarithmic slope delta should be given.
+        In the case of an abg profile, the slopes alpha, beta and gamma should also be given.
+        - N_part is the total number of particles contained in the halo at the end
+        - N_bin is the number of bins for the shells
+        - R_min and R_max are the minimum and maximum radius of the halo
+        - res is the resolution i.e. the size of the firs shell
+        - r_shell_binning: the radius can be binned linearly but by default it is binned logarithmically
+        - a_ax, b_ax, c_ax: the halo shape is given by a_ax, b_ax, c_ax (dimensionless so between 0 and 1),
         which correspond to the 3 mains axis
         it can be either float numbers (constant shape) or numpy arrays (shape varyng with the radius)
+        #############################################################################################
+        Returns:
         This function returns a dictionnary which contains:
-        -data: which are the particle positions in the same unit as R_min and R_max
-        -N_tot: the total number of particles N_tot, 
-        -N_part_bin: the number of particles in each bin N_part_bin,
-        -r_bin: the radius of each bin (or shell) r_bin
-        -r: the radius of each particle r
-        -r_ell: and the ellipsoidal radius of each particle r_ell
+        - data: which are the particle positions in the same unit as R_min and R_max
+        - N_tot: the total number of particles N_tot, 
+        - N_part_bin: the number of particles in each bin N_part_bin,
+        - r_bin: the radius of each bin (or shell) r_bin
+        - r: the radius of each particle r
+        - r_ell: and the ellipsoidal radius of each particle r_ell
         '''
+        #########################################################################
+        if kind_profile == {}:
+            kind_profile = {"kind of profile": "abg",
+                            "concentration": 10,
+                            "alpha": 1, "beta": 3, "gamma": 1}
         ####################################################################### deal with x: the radius of the shells
         if r_shell_binning == 'logarithmic' : # shell bining with logarithmic radius bin
             if R_min != 0 : # radius limiting case, so all particles will have R_min < r < R_max
@@ -274,11 +283,12 @@ class Smooth_halo(Profile):
     
 if __name__ == '__main__':
     halo = Smooth_halo()
-    c = 10
-    kind_profile = ['abg', c]
-    my_halo = halo.smooth_halo_creation(kind_profile, b_ax=0.5, c_ax=0.5)
-    data = my_halo[0]
-    print('N_tot =',my_halo[1])
+    kind_profile = {"kind of profile": "abg",
+                    "concentration": 10,
+                    "alpha": 1, "beta": 3, "gamma": 1}
+    my_halo = halo.smooth_halo_creation() #kind_profile, b_ax=0.5, c_ax=0.5)
+    data = my_halo["data"]
+    print("N_tot =",my_halo["N_tot"])
     #halo.plot_data(data[:,0],data[:,1])
     halo.beauty_plot_colorbar(data)
     #halo.do_many_times(10)
