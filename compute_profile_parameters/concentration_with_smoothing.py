@@ -43,7 +43,6 @@ def profile_log_r_bin_hist(radius,r_min=0.01,r_max=1,N_bin=30,factor_random_mass
     rho_log_bin = N_part_in_shell*factor_random_mass/Volume_shell
     return(r_log_bin,rho_log_bin,dn,dr) 
 
-
 def triangular_smoothing(y) :
     y_new = (y[2:] + 2*y[1:-1] + y[0:-2])/4
     return(y_new)
@@ -56,7 +55,7 @@ def triangular_smoothing_7_points(y) :
     y_new = (y[6:] + 2*y[5:-1] + 3*y[4:-2] + 4*y[3:-3] + 3*y[2:-4] + 2*y[1:-5] + y[:-6])/16
     return(y_new)
     
-def get_c_from_smooth_data(dn_dr_smooth,add_ind=0) :
+def get_c_from_smooth_data(dn_dr_smooth, add_ind=0) :
     dn_dr_max = np.max(dn_dr_smooth)
     ind_max = np.where(dn_dr_smooth == dn_dr_max)[0]
     r_minus_2 = r_log_bin[ind_max+add_ind]
@@ -66,7 +65,7 @@ def get_c_from_smooth_data(dn_dr_smooth,add_ind=0) :
     conc_low = Rvir/r_minus_2_up
     conc_high = Rvir/r_minus_2_down
     dc = np.max([conc-conc_low,conc_high-conc])/2
-    return(conc,dc)
+    return(conc, dc)
 
 def do_plot(c_t_3,dc_t_3,c_t_5,dc_t_5,c_SG_3,dc_SG_3,c_SG_5,dc_SG_5,N_samples) :
     plt.rc('font', family='serif',size=16)

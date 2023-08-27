@@ -24,7 +24,7 @@ import unsiotools.simulations.cfalcon as falcon
 cf = falcon.CFalcon()
 
 ###############################################################################
-from density_profile import Profile
+from semi_analytical_halos.density_profile import Profile
 
 class Smooth_halo(Profile):
     
