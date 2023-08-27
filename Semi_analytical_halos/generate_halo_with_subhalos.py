@@ -7,7 +7,19 @@ Created on Sun Oct  2 13:43:59 2022
 """
 
 '''
-This script allows to generate semi-analytical halo with subhalos from analytical density profile.
+This script contains 1 class Halo_with_sub which allows to generate
+semi-analytical halo with subhalos from analytical density profile.
+The class Halo_with_sub contains the following methods:
+    - plot_data_two
+    - subhalo_mass_function
+    - get_subhalo_masses
+    - select_subhalos
+    - c_M
+    - get_concentration_from_mass
+    - get_rho_minus_2
+    - generate_halo_with_sub: this is the main method of this class
+    - generate_many
+
 '''
 
 # import standard libraries
@@ -15,7 +27,7 @@ import numpy as np
 import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import random
-from typing import Dict
+from typing import Dict, Callable
 
 # import my class
 from generate_smooth_halo import Smooth_halo # for generate smooth halo
@@ -42,14 +54,25 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         plt.show()
         return()
     
-    def subhalo_mass_function(self,M_sub,m_min,m_max,delta) :
-        # dN/dm = A * m**(-delta)
+    def subhalo_mass_function(self, M_sub: float, m_min: float, m_max: float, 
+                              delta: float) -> Callable[[float], float] :
+        """
+        Generate the subhalo mass function dN/dm.
+        dN/dm is the number of subhalo of in the mass range [m, m+dm]:
+        dN/dm = A * m**(-delta)
+        Input parameters:
+        - M_sub: total subhalo mass
+        - m_min, m_max: subhalo mass minimum and maximum allowed
+        - delta: parameter of the previous formula
+        Returns:
+        - lambda function: dN_dm(m) i.e. number of subhalo of mass range [m, m+dm]
+        """
         if delta != 2 :
             A = M_sub * (-delta + 2)/(m_max**(-delta+2) - m_min**(-delta+2))
         else :
             A = M_sub/np.log(m_max/m_min)
         dN_dm = lambda m: A * m**(-delta)        
-        return(dN_dm)
+        return dN_dm
     
     def get_subhalo_masses(self,dN_dm,m_min,m_max,N_sub_m_bin) :
         m_bin = 10**(np.linspace(np.log10(m_min), np.log10(m_max), N_sub_m_bin+1))
