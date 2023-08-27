@@ -9,6 +9,7 @@ Created on Sun Oct  2 13:43:59 2022
 '''
 This script contains 1 class Halo_with_sub which allows to generate
 semi-analytical halo with subhalos from analytical density profile.
+
 The class Halo_with_sub contains the following methods:
     - scatter_plot_halo
     - subhalo_mass_function
