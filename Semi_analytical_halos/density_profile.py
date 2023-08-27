@@ -123,6 +123,24 @@ class Profile:
         n_s = 1/(4*np.pi*my_int_tot[0]) # scale number density in r_s**(-3) unit
         return(n_s)
     
+    def get_rho_minus_2(self,concentration,N_part,kind_profile,R_min=0,R_max=1) :
+        r_minus_2 = 1/concentration # r_minus_2 in unit of the subhalo size r_sub_max
+        #r_bin = np.logspace(np.log10(R_min),np.log10(R_max),N_bin+1) # no influence on rho_minus_2 I think
+        #r_s, n_x, log_slope = self.deal_with_kind_profile(kind_profile, r_bin)
+        n_x = self.Einasto_profile(alpha_Einasto=kind_profile[2])
+        n_x_2 = lambda x: (x**(2)) * n_x(x)
+        ####################################################################### total number of particles in the halo and normalisation of the density profile
+        if isinstance(concentration, (np.ndarray)) : 
+            N_sub = len(concentration)
+            rho_minus_2 = np.zeros((N_sub))
+            for s in range(N_sub) :
+                my_int_tot = integrate.quad(lambda x: n_x_2(x), R_min/r_minus_2[s], R_max/r_minus_2[s]) # volume in r_minus_2**3 unit
+                rho_minus_2[s] = (N_part[s]/(r_minus_2[s]**3))/(4*np.pi*my_int_tot[0]) # scale number density
+        else :
+            my_int_tot = integrate.quad(lambda x: n_x_2(x), R_min/r_minus_2, R_max/r_minus_2) # volume in r_minus_2**3 unit
+            rho_minus_2 = (N_part/(r_minus_2**3))/(4*np.pi*my_int_tot[0]) # scale number density, in unit of the size of the subhalo cube
+        return(rho_minus_2)
+    
     def deal_with_kind_profile(self, kind_profile: Dict, r_bin: float=-1, R_max: float=1,):
         # deal with kind_profile:
         if kind_profile["kind of profile"] == "abg": # case of an alpha beta, gamma density profile

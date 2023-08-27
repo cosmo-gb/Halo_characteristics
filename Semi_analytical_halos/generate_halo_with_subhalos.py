@@ -16,10 +16,8 @@ The class Halo_with_sub contains the following methods:
     - select_subhalos
     - c_M
     - get_concentration_from_mass
-    - get_rho_minus_2
-    - generate_halo_with_sub: this is the main method of this class
+    - generate_halo_with_sub: this is the MAIN method of this class
     - generate_many
-
 '''
 
 # import standard libraries
@@ -211,24 +209,6 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                 break
         return c_sub
     
-    def get_rho_minus_2(self,concentration,N_part,kind_profile,R_min=0,R_max=1) :
-        r_minus_2 = 1/concentration # r_minus_2 in unit of the subhalo size r_sub_max
-        #r_bin = np.logspace(np.log10(R_min),np.log10(R_max),N_bin+1) # no influence on rho_minus_2 I think
-        #r_s, n_x, log_slope = self.deal_with_kind_profile(kind_profile, r_bin)
-        n_x = self.Einasto_profile(alpha_Einasto=kind_profile[2])
-        n_x_2 = lambda x: (x**(2)) * n_x(x)
-        ####################################################################### total number of particles in the halo and normalisation of the density profile
-        if isinstance(concentration, (np.ndarray)) : 
-            N_sub = len(concentration)
-            rho_minus_2 = np.zeros((N_sub))
-            for s in range(N_sub) :
-                my_int_tot = integrate.quad(lambda x: n_x_2(x), R_min/r_minus_2[s], R_max/r_minus_2[s]) # volume in r_minus_2**3 unit
-                rho_minus_2[s] = (N_part[s]/(r_minus_2[s]**3))/(4*np.pi*my_int_tot[0]) # scale number density
-        else :
-            my_int_tot = integrate.quad(lambda x: n_x_2(x), R_min/r_minus_2, R_max/r_minus_2) # volume in r_minus_2**3 unit
-            rho_minus_2 = (N_part/(r_minus_2**3))/(4*np.pi*my_int_tot[0]) # scale number density, in unit of the size of the subhalo cube
-        return(rho_minus_2)
-    
     def generate_halo_with_sub(self, kind_profile_main: Dict={}, 
                                kind_profile_sub: Dict={}, 
                                kind_profile_pos_sub: Dict={},
@@ -240,6 +220,42 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
                                N_sub_m_bin: int=30, fac_fake: float=5,
                                res: float=0.001, r_shell_binning: str="logarithmic",
                                verbose: bool=False,) -> Dict:
+        """
+        This function generates a halo with subhalos as follows:
+        1) It first generates the main smooth halo.
+        2) Then it generates a lot of subhalos.
+        3) Then it computes the massa and concentration of those subhaloes.
+        4) Then it applies tidal forces on those subhalos. 
+           The mass fraction of subhalos is thus reduced
+           but is still supposed to be greater than the desired mass fraction.
+        5) Finally, the overage suhalos are removed in order to end 
+           with the desired mass fraction of subhalo.
+        ##############################################################################################
+        Input parameters:
+        - kind_profile_main: Dict, contains the kind of profile you want for the main halo 
+          (e.g. NFW with c=10)
+        - kind_profile_sub: Dict, contains the kind of profile you want for the subhalos
+        - kind_profile_pos_sub: Dict, contains the kind of profile you want for the positions
+          of subhalos inside the main halo
+        - M_tot: float, in unit of 10**12Msun/h, total mass desired of the final halo
+        - m_part: float, in unit of 10**12Msun/h, mass of 1 particle
+        - R_min_main, R_max_main: float, minimal and maximal radius desired for the main halo
+        - f_sub: float, subhalo mass fraction desired
+        - m_min, m_max: float, minimal and maximal subhalo mass
+        - delta: float, logarithmic slope of the subhalo mass function
+        - N_bin_main: int, number of radius bins of the main smooth halo
+        - a_ax_main, b_ax_main, c_ax_main: float, for sphericity, 
+          axis size of the 3 main components of the main smooth halo
+        - N_sub_m_bin: int, mass bin of the subhalo mass
+        - fac_fake: float, multiplicator in order to generate more subhalos than needed
+        - res: float, spatial resolution
+        - r_shell_binning: str, logarithmic or linear spatial bining for generate halos
+        - verbose: bool, to get more info
+        ############################################################################################
+        returns:
+        - halo_with_sub: 
+
+        """
         ###################### set default kind of profiles ##########################################
         if kind_profile_main == {}: # default density profile of the main halo (NFW with c=10)
             kind_profile_main = {"kind of profile": "abg",
