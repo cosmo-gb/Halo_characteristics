@@ -10,7 +10,7 @@ Created on Sun Oct  2 13:43:59 2022
 This script contains 1 class Halo_with_sub which allows to generate
 semi-analytical halo with subhalos from analytical density profile.
 The class Halo_with_sub contains the following methods:
-    - plot_data_two
+    - scatter_plot_halo
     - subhalo_mass_function
     - get_subhalo_masses
     - select_subhalos
@@ -27,7 +27,7 @@ import numpy as np
 import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import random
-from typing import Dict, Callable
+from typing import Dict, Callable, Tuple
 
 # import my class
 from generate_smooth_halo import Smooth_halo # for generate smooth halo
@@ -35,7 +35,10 @@ from compute_tidal_radii import Tidal_radius # for compute the tidal radius of s
 
 class Halo_with_sub(Smooth_halo, Tidal_radius):
     
-    def plot_data_two(self,x,y,N,x_min=-1,x_max=1,y_min=-1,y_max=1) :
+    def scatter_plot_halo(self, x, y, N, x_min=-1, x_max=1, y_min=-1, y_max=1,) :
+        """
+        Do a scatter plot of the data x and y.
+        """
         plt.rc('font', family='serif')
         plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.top'] = True
         plt.rcParams['ytick.left'] = plt.rcParams['ytick.right'] = True
@@ -52,10 +55,9 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         plt.show()
-        return()
     
     def subhalo_mass_function(self, M_sub: float, m_min: float, m_max: float, 
-                              delta: float) -> Callable[[float], float] :
+                              delta: float,) -> Callable[[float], float] :
         """
         Generate the subhalo mass function dN/dm.
         dN/dm is the number of subhalo of in the mass range [m, m+dm]:
@@ -74,21 +76,26 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
         dN_dm = lambda m: A * m**(-delta)        
         return dN_dm
     
-    def get_subhalo_masses(self,dN_dm,m_min,m_max,N_sub_m_bin) :
+    def get_subhalo_masses(self, dN_dm: Callable[[float], float], m_min: float, m_max: float,
+                           N_sub_m_bin: int,) -> \
+                           Tuple[np.ndarray[int], np.ndarray[np.float32], 
+                                 int, np.ndarray[np.float32]]:
+        
         m_bin = 10**(np.linspace(np.log10(m_min), np.log10(m_max), N_sub_m_bin+1))
-        N_sub_bin = np.zeros((N_sub_m_bin+1),dtype=int) # it contains N_sub_m_bin + 1 elements
+        N_sub_bin = np.zeros((N_sub_m_bin+1), dtype=int) # it contains N_sub_m_bin + 1 elements
         for b in range(N_sub_m_bin) :
             # need to change that also !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             my_int = integrate.quad(lambda m: dN_dm(m), m_bin[b], m_bin[b+1])
-            N_sub_bin[b] = int(np.round(my_int[0],decimals=0)) # number of subhalos by subhalo mass bin
+            N_sub_bin[b] = int(np.round(my_int[0], decimals=0)) # number of subhalos by subhalo mass bin
         N_sub_tot = np.sum(N_sub_bin)
         m_sub = np.zeros((N_sub_tot))
         N_start, N_end = 0, N_sub_bin[0]
         for b in range(N_sub_m_bin) :
-            m_sub[N_start:N_end] = np.array(np.random.uniform(m_bin[b], m_bin[b+1],N_sub_bin[b]),dtype=np.float32)
+            m_sub[N_start:N_end] = np.array(np.random.uniform(m_bin[b], m_bin[b+1],N_sub_bin[b]),
+                                            dtype=np.float32)
             N_start += N_sub_bin[b]
             N_end += N_sub_bin[b+1]
-        return(N_sub_bin,m_sub,N_sub_tot,m_bin)
+        return N_sub_bin, m_sub, N_sub_tot, m_bin)
     
     def select_subhalos(self, dN_dm, m_min, m_max, N_sub_m_bin, m_sub, f_remove) :
         ''' Select a fraction f_remove of suhalos that has been created and
@@ -360,6 +367,6 @@ if __name__ == '__main__':
     N_part_main = main_halo["N_tot"]
     #halo.plot_data(data[:,0],data[:,1])
     halo.beauty_plot_colorbar(data)
-    #halo.plot_data_two(data[:,0], data[:,1], N_part_main)
+    #halo.scatter_plot_halo(data[:,0], data[:,1], N_part_main)
     #halo.generate_many(10)
 
