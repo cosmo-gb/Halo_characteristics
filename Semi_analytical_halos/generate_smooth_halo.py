@@ -218,8 +218,8 @@ class Smooth_halo(Profile):
         my_int_tot = integrate.quad(lambda x: n_x_2(x), R_min, R_max) # volume in r_s**3 unit
         n_s = N_part/(4*np.pi*my_int_tot[0]) # scale number density in r_s**(-3) unit
         ####################################################################### deal with y: number of particles in each shell
-        N_part_bin = np.zeros((N_bin+1),dtype=int) # it contains N_bin + 1 elements
-        proba = np.zeros((N_bin),dtype=int) # it contains N_bin elements
+        N_part_bin = np.zeros((N_bin+1), dtype=int) # it contains N_bin + 1 elements
+        proba = np.zeros((N_bin), dtype=int) # it contains N_bin elements
         for b in range(N_bin):
             # I compute the number of particles in each radius bin i.e. in each shell
             my_int =  integrate.quad(lambda r: n_x_2(r), r_bin[b], r_bin[b+1]) # this is in mass unit

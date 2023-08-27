@@ -152,33 +152,64 @@ class Halo_with_sub(Smooth_halo, Tidal_radius):
             ind_b_use = np.append(ind_b_use, ind_bin_b[ind_sel])
         return ind_b_use
                    
-    def c_M(self,mass,A=5,B=-0.1) :
-        # mass should be in unit 10**12 M_sun/h
-        mass = mass/100
-        # mass should be in unit 10**14 M_sun/h
-        # see the thesis of Matthieu Schaller
-        c = A * np.power(mass,B)
-        return(c)
+    def c_M(self, halo_mass: np.ndarray[np.float32], A: float=5, B: float=-0.1,) \
+            -> np.ndarray[np.float32]:
+        """
+        Get typical concentration from halo mass with formula:
+        concentration = A * halo_mass**B
+        see the thesis of Matthieu Schaller
+        ###########################################################################
+        Input parameters:
+        - halo_mass: np.array of float 32, in unit of 10**12 Msun/h
+          masses of halos I want the concentration
+        - A, B: float, constant of equation
+        ###########################################################################
+        returns
+        - concentration: np.array of float32, typical concentrations for halos of masses halo_mass
+        """
+        #halo_mass /= 100 # !!!!!!!!!!!!!!!!!!!! This does NOT work, I do not know why ?
+        halo_mass = halo_mass/100 # set mass from unit 10**12 to unit 10**14 Msun/h
+        concentration = A * np.power(halo_mass, B)
+        return concentration
     
-    def get_concentration_from_mass(self,m_sub,c_pb=0.1):
-        # c(M) (see Batthacharya+13, normal distribution)
-        # mass should be in unit 10**14 M_sun/h
-        # see the thesis of Matthieu Schaller
+    def get_concentration_from_mass(self, m_sub: np.ndarray[np.float32], c_pb: float=0.1,) \
+                                    -> np.ndarray[np.float32]:
+        """
+        Computes the concentrations of halos with mass m_sub, assuming that
+        1) the average mass concentration relation is given by the method c_M, 
+        as in the thesis of Matthieu Schaller
+        2) the concentrations of halos having the same mass
+        follow a gaussian distribution as in Batthacharya+13
+        ###########################################################################
+        Input parameters:
+        - m_sub: np.array of float32, subhalo masses
+        - c_pb: float, threshold of problematic concentration
+        below c_pb it is considered a problematic concentration
+        ###########################################################################
+        Returns:
+        - c_sub: np.array of float32, concentrations of the subhalos with mass m_sub
+        """
+        # mean concentration, following the thesis of Matthieu Schaller
         c_mean_sub = self.c_M(m_sub)
+        # standard deviation of the concentration distribution, following Batthacharya+13
         sigma_c_sub = 0.3 * c_mean_sub
-        c_sub = np.random.normal(loc=c_mean_sub,scale=sigma_c_sub)
-        ind_pb = np.where(c_sub <= c_pb)[0] 
+        # concentrations distribution, following Batthacharya+13
+        c_sub = np.random.normal(loc=c_mean_sub, scale=sigma_c_sub)
+        # some of those concentration can be negative
+        # for those cases, I recompute the concentration
+        ind_pb = np.where(c_sub <= c_pb)[0] # indice of problematic concentration
         i = 0
         while len(ind_pb) > 0:
-            print('I generated a negative concentration so I restart')
+            print("I generated a negative concentration so I restart")
             c_mean_sub = self.c_M(m_sub)
             sigma_c_sub = 0.3 * c_mean_sub
-            c_sub = np.random.normal(loc=c_mean_sub,scale=sigma_c_sub)
+            c_sub = np.random.normal(loc=c_mean_sub, scale=sigma_c_sub)
             ind_pb = np.where(c_sub <= c_pb)[0] 
             if i > 10 :
-                print('WTFUCK !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print(" This should not happen, you should do something about  \n \
+                      how the subhalo concentrations are generated")
                 break
-        return(c_sub)
+        return c_sub
     
     def get_rho_minus_2(self,concentration,N_part,kind_profile,R_min=0,R_max=1) :
         r_minus_2 = 1/concentration # r_minus_2 in unit of the subhalo size r_sub_max
