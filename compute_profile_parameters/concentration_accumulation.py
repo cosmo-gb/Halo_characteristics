@@ -62,6 +62,7 @@ class Concentration_accumulation():
         """
         This function computes the concentration of a halo with the accumulated mass technique.
         It follows the equation 6 of https://iopscience.iop.org/article/10.3847/1538-4357/aabf95/pdf
+        This technique assumes that the halo has a NFW profile.
         #############################################################################
         Input parameters:
         - r_data: np.array of float, radius of particles in the halo
@@ -71,21 +72,25 @@ class Concentration_accumulation():
         - concentration: float, the halo concentration
         - ok: bool, if True there is only 1 unique solution, False otherwise
         """
-        # compute the concentration with accumulation mass method
-        # following: https://iopscience.iop.org/article/10.3847/1538-4357/aabf95/pdf
-        # it assumes NFW
         r_data_sorted = np.sort(r_data) # I need to sort the radii
         N_part_tot = len(r_data_sorted) # total number of particles
-        N_end = int(0.9 * N_part_tot) # considered part of the halo
+        # won't consider the very outer part of the halo,
+        # as this part can be problematic for the change of sign
+        N_end = int(0.9 * N_part_tot) # part of the halo
         M_in_sphere_data = range(1, N_end+1) # cumulative mass
         # then I compute the mass within r_s, assuming that r=r_s for all r
         M_in_sphere_r_s_NFW = self.mass_in_r_s_NFW(N_part_tot, r_data_sorted[0:N_end])
-        diff = M_in_sphere_data - M_in_sphere_r_s_NFW # difference between the mass
-        # when the mass difference changes of sign, it means that we have r=r_s
+        # difference between the masses: M(<r) - M_NFW(<r_s=r)
+        diff = M_in_sphere_data - M_in_sphere_r_s_NFW 
+        # the mass difference changes of sign at r=r_s
+        # thus we look for this change of sign
         ind_sign_change = np.where(np.diff(np.sign(diff)) != 0)[0]
         if len(ind_sign_change) == 1: # case with only 1 solution
             ok = True
-            r_s = (r_data_sorted[ind_sign_change[0]] + r_data_sorted[ind_sign_change[0] - 1])/2
+            #r_s = (r_data_sorted[ind_sign_change[0]] + r_data_sorted[ind_sign_change[0] - 1])/2
+            #r_s = r_data_sorted[ind_sign_change[0]]
+            #r_s = r_data_sorted[ind_sign_change[0]+1]
+            r_s = r_data_sorted[ind_sign_change[0]-1]
         else: # case with at least 2 solutions
             ok = False
             r_s = np.sum(r_data_sorted[ind_sign_change])/len(ind_sign_change)
@@ -114,5 +119,15 @@ if __name__ == '__main__':
 
     r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
     c_acc = Concentration_accumulation()
-    conc = c_acc.compute_c_NFW_acc(r_data)
+    conc, ok = c_acc.compute_c_NFW_acc(r_data)
     print(conc)
+    N_times = 1000
+    c_arr = np.zeros((N_times))
+    for t in range(N_times):
+        my_halo = halo.smooth_halo_creation(N_part=3000) #kind_profile, b_ax=0.5, c_ax=0.5)
+        data = my_halo["data"]
+        r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
+        c_arr[t], ok = c_acc.compute_c_NFW_acc(r_data)
+        if ok == False:
+            print(ok, c_arr[t])
+    print(np.mean(c_arr), np.std(c_arr))
