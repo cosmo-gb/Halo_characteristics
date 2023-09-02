@@ -88,7 +88,7 @@ def compute_c_NFW_acc_2(r_data) :
     N_part_tot = len(r_data)
     N_end = np.int(0.9 * N_part_tot)
     M_in_sphere_data = range(1,N_end+1)
-    M_in_sphere_r_s_NFW = compute_mass_NFW(N_part_tot,r_data[0:N_end])
+    M_in_sphere_r_s_NFW = compute_mass_NFW(N_part_tot, r_data[0:N_end])
     diff = M_in_sphere_data - M_in_sphere_r_s_NFW
     out = np.diff(np.sign(diff))
     ind_sign_change = np.where(out != 0)[0]
