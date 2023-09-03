@@ -23,8 +23,14 @@ It contains the method:
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple
+from scipy.signal import savgol_filter
+import pandas as pd
+
 
 from semi_analytical_halos.generate_smooth_halo import Smooth_halo
+from semi_analytical_halos.density_profile import Profile
+
+
 
 
 class Concentration_accumulation():
@@ -57,7 +63,6 @@ class Concentration_accumulation():
         - mass contained within r_s = M(<r_s)
         """
         return Mass_total * (np.log(2) - 0.5)/self.NFW_function(1/r_s)
-        
 
     def smooth(self, y: np.ndarray[float], box_pts: int,) -> np.ndarray[float]:
         box = np.ones(box_pts)/box_pts
@@ -114,8 +119,20 @@ class Concentration_accumulation():
                     M_in_sphere_r_s_NFW, c="b")
             plt.show()
         return conc, ok
-            
-
+         
+    def get_c_from_smooth_data(self, dn_dr_smooth: np.ndarray[float], r_log_bin: np.ndarray[float],
+                               add_ind=0,) -> np.ndarray[float]:
+        dn_dr_max = np.max(dn_dr_smooth)
+        ind_max = np.where(dn_dr_smooth == dn_dr_max)[0]
+        r_minus_2 = r_log_bin[ind_max+add_ind]
+        r_minus_2_up = r_log_bin[ind_max+add_ind+1]
+        r_minus_2_down = r_log_bin[ind_max+add_ind-1]
+        conc = 1/r_minus_2
+        conc_low = 1/r_minus_2_up
+        conc_high = 1/r_minus_2_down
+        dc = (conc_high - conc_low)/2
+        #dc = np.max([conc-conc_low,conc_high-conc])/2
+        return np.array([conc, dc]).T
 
 if __name__ == '__main__':
     halo = Smooth_halo()
@@ -129,16 +146,50 @@ if __name__ == '__main__':
     #halo.beauty_plot_colorbar(data)
 
     #r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
-    c_acc = Concentration_accumulation()
+    c_comp = Concentration_accumulation()
+    profile = Profile()
     #conc, ok = c_acc.compute_c_NFW_acc(r_data)
     #print(conc)
-    N_times = 100
-    c_arr = np.zeros((N_times))
+    N_times = 30
+    box_arr = [1, 2, 3, 4, 5]
+    wl_arr = [2, 3, 4, 5]
+    pol_arr = [1, 2, 3, 4, 5]
+    c_acc, c_peak = np.zeros((N_times)), np.zeros((N_times,2*len(box_arr)))
+    c_peak_sg = np.zeros((N_times, 2*len(pol_arr)*len(wl_arr)))
     for t in range(N_times):
-        my_halo = halo.smooth_halo_creation(N_part=100000) #kind_profile, b_ax=0.5, c_ax=0.5)
+        my_halo = halo.smooth_halo_creation(N_part=10000) #kind_profile, b_ax=0.5, c_ax=0.5)
         data = my_halo["data"]
         r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
-        c_arr[t], ok = c_acc.compute_c_NFW_acc(r_data)
+        c_acc[t], ok = c_comp.compute_c_NFW_acc(r_data)
         if ok == False:
-            print(ok, c_arr[t])
-    print(np.mean(c_arr), np.std(c_arr))
+            print(ok, c_acc[t])
+        out = profile.profile_log_r_bin_hist(r_data, N_bin=30)
+        r_log_bin, rho_log_bin, N_part_in_shell = out
+        rho_r2 = rho_log_bin * r_log_bin**2
+        for b, box in enumerate(box_arr):
+            rho_r2_smooth = c_comp.smooth(rho_r2, box)
+            c_peak[t:t+1,b*2:(b+1)*2] = c_comp.get_c_from_smooth_data(rho_r2_smooth, r_log_bin)
+        for w, wl in enumerate(wl_arr):
+            for p, pol in enumerate(pol_arr):
+                if pol < wl:
+                    rho_r2_smooth = savgol_filter(rho_r2, window_length=wl, polyorder=pol)
+                    beg = w*2*len(pol_arr)+p*2
+                    end = beg + 2
+                    #print(w, p, beg, end)
+                    c_peak_sg[t:t+1, beg:end] = c_comp.get_c_from_smooth_data(rho_r2_smooth, r_log_bin)
+                else :
+                    break
+    col = []
+    for b in range(len(box_arr)):
+        col += ["c_box_"+str(box_arr[b]),"dc_box_"+str(box_arr[b])]
+    c_peak = pd.DataFrame(c_peak, columns=col)
+    print(c_peak.mean(), c_peak.std())
+    
+    col = []
+    for w in range(len(wl_arr)):
+        for p in range(len(pol_arr)):
+            col += ["c_wl_"+str(wl_arr[w])+"_"+str(pol_arr[p]),
+                    "dc_wl_"+str(wl_arr[w])+"_"+str(pol_arr[p])]
+    c_peak_sg = pd.DataFrame(c_peak_sg, columns=col)
+    print(c_peak_sg.mean(), c_peak_sg.std())
+    

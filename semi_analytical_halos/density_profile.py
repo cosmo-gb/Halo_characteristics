@@ -186,7 +186,7 @@ class Profile:
         alpha = np.append(alpha,alpha_last)
         return(alpha)
     
-    def profile_log_r_bin_hist(self,radius,r_min=0.01,r_max=1,N_bin=30,factor_random_mass=1):
+    def profile_log_r_bin_hist(self, radius, r_min=0.01, r_max=1, N_bin=30, factor_random_mass=1,):
         # It computes the density profile with an equal logarithmic shell size
         # It imposes shells of a given size, computed with r_min r_max and N_bin
         # Then it computes the number of particles in each shell
@@ -207,7 +207,7 @@ class Profile:
         r_log_bin = (r_log_bin[1:] + r_log_bin[:-1])/2
         Volume_shell = (4*np.pi/3)*(r_shell[1:]**3 -r_shell[:-1]**3)
         rho_log_bin = N_part_in_shell*factor_random_mass/Volume_shell
-        return(r_log_bin,rho_log_bin,N_part_in_shell) 
+        return r_log_bin, rho_log_bin, N_part_in_shell
     
     def plot_profile(self,r_bin,rho_bin) :
         plt.rc('font', family='serif')

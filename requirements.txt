@@ -1,4 +1,6 @@
+python==3.10.9
 numpy==1.23.5
 matplotlib==3.7.1
+pandas==2.1.0
 scipy==1.10.0
 python-unsiotools==1.0.1
