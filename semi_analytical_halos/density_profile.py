@@ -47,17 +47,17 @@ class Profile:
         n_profile = lambda x: (x**(-gamma)) * (1 + x**alpha)**((gamma - beta)/alpha) 
         return(n_profile, r_s)
     
-    def Einasto_profile(self,alpha_Einasto=0.17):
+    def Einasto_profile(self, alpha_Einasto=0.17,):
         if alpha_Einasto <= 0 :
             print('alpha_Einasto should be positive but =',alpha_Einasto)
         n_profile = lambda x: np.exp( (-2/alpha_Einasto) * (np.power(x,alpha_Einasto) - 1) )
         return(n_profile)
 
-    def single_slope_profile(self,slope) :
+    def single_slope_profile(self, slope,):
         n_profile = lambda x: x**(-slope)
         return(n_profile)
 
-    def compute_log_slope_abg(self,x_edges,alpha=1,beta=3,gamma=1) :
+    def compute_log_slope_abg(self, x_edges, alpha=1, beta=3, gamma=1,):
         N_x_strict_positive = len(np.where(x_edges[1:] > 0)[0])
         N_x = len(x_edges)
         x_bin = (x_edges[1:] + x_edges[:-1])/2
@@ -71,13 +71,13 @@ class Profile:
             sys.exit('x should not be negative or have multiples 0 values')
         return(log_slope)
     
-    def dlog_M_dlog_r_NFW(self,x) :
+    def dlog_M_dlog_r_NFW(self, x,):
         num = (x**2)
         den = ((1+x)**2) * (np.log(1+x) -x/(1+x))
         y = num/den
         return(y)
     
-    def compute_log_slope_Einasto(self,x_edges,alpha_Einasto=0.17) :
+    def compute_log_slope_Einasto(self, x_edges, alpha_Einasto=0.17,):
         # analytical formula of the logarithmic derivative of the Einasto profile:
         # dlog(rho)/dlog(r) = -2 * (r/r_s)**(alpha_Einasto)
         N_x_strict_positive = len(np.where(x_edges[1:] > 0)[0])
@@ -92,7 +92,7 @@ class Profile:
             sys.exit('x should not be negative or have multiples 0 values')
         return(log_slope)
     
-    def compute_mass_Einsato(self,r,r_minus_2,alpha,rho_minus_2) :
+    def compute_mass_Einsato(self, r, r_minus_2, alpha, rho_minus_2,):
         # see Equation 16 of Springel+08: mass included inside the radius r for an Einsto profile with alpha parameter
         # M(<r) = ((4 pi r_minus_2**3 rho_minus_2)/alpha) * exp((3*ln(alpha) + 2 -ln(8))/alpha) * gamma(a,x)
         # with gamma(a,x) the lower incomplete gamma function
@@ -106,13 +106,13 @@ class Profile:
         mass_slope = dM_dr * r/mass # logarithmic derivative of the mass with respect the radius
         return(mass,mass_slope)
         
-    def compute_mass_NFW(self,r,r_s,rho_s):
+    def compute_mass_NFW(self, r, r_s, rho_s,):
         # see Equation 3.72 in the thesis of Stref Martin
         x = r/r_s
         M_in_r = (4 * np.pi * rho_s * r_s**3) * (np.log(1+x) - x/(x+1))
         return(M_in_r)
     
-    def get_rho_s(self,n_x,r_min=0,r_max=1):
+    def get_rho_s(self, n_x, r_min=0, r_max=1,):
         #r_s, n_x, log_slope = self.deal_with_kind_profile(kind_profile, r_bin, R_max)
         n_x_2 = lambda x: (x**(2)) * n_x(x)
         ####################################################################### set everything in r_s unit:
@@ -123,7 +123,7 @@ class Profile:
         n_s = 1/(4*np.pi*my_int_tot[0]) # scale number density in r_s**(-3) unit
         return(n_s)
     
-    def get_rho_minus_2(self,concentration,N_part,kind_profile,R_min=0,R_max=1) :
+    def get_rho_minus_2(self, concentration, N_part, kind_profile, R_min=0, R_max=1,):
         r_minus_2 = 1/concentration # r_minus_2 in unit of the subhalo size r_sub_max
         #r_bin = np.logspace(np.log10(R_min),np.log10(R_max),N_bin+1) # no influence on rho_minus_2 I think
         #r_s, n_x, log_slope = self.deal_with_kind_profile(kind_profile, r_bin)
@@ -172,7 +172,7 @@ class Profile:
         else :
             return r_s, n_profile
                 
-    def compute_logarithmic_derivative(self,r,rho) :
+    def compute_logarithmic_derivative(self, r, rho,):
         # this function computes the logarithmic derivative of the function rho(r)
         # using (rho(r+h)-rho(r-h))/(2*h)
         log_r = np.log10(r)
@@ -209,7 +209,7 @@ class Profile:
         rho_log_bin = N_part_in_shell*factor_random_mass/Volume_shell
         return r_log_bin, rho_log_bin, N_part_in_shell
     
-    def plot_profile(self,r_bin,rho_bin) :
+    def plot_profile(self, r_bin, rho_bin,):
         plt.rc('font', family='serif')
         plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.top'] = True
         plt.rcParams['ytick.left'] = plt.rcParams['ytick.right'] = True
@@ -223,7 +223,7 @@ class Profile:
         plt.show()
         return()
     
-    def plot_two_profiles(self,r_bin,rho_bin_1,rho_bin_2) :
+    def plot_two_profiles(self, r_bin, rho_bin_1, rho_bin_2,):
         plt.rc('font', family='serif')
         plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.top'] = True
         plt.rcParams['ytick.left'] = plt.rcParams['ytick.right'] = True
@@ -238,7 +238,7 @@ class Profile:
         plt.show()
         return()
     
-    def plot_profile_r_2(self,r_bin,rho_bin_r_2) :
+    def plot_profile_r_2(self, r_bin, rho_bin_r_2,):
         plt.rc('font', family='serif')
         plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.top'] = True
         plt.rcParams['ytick.left'] = plt.rcParams['ytick.right'] = True

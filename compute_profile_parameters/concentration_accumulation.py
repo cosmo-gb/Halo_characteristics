@@ -28,7 +28,7 @@ import pandas as pd
 
 
 from semi_analytical_halos.generate_smooth_halo import Smooth_halo
-from semi_analytical_halos.density_profile import Profile
+#from semi_analytical_halos.density_profile import Profile
 
 
 class Concentration_accumulation(Smooth_halo):
