@@ -23,6 +23,17 @@ cf = falcon.CFalcon()
 
 class Profile:
     
+    def profile_NFW(self, radius, conc, mass,):
+        # profile NFW: rho(r) = rho_s/(x * (1 + x)**2), x=radius/r_s
+        # radius should be in Rvir unit, rho_s should be in rho_crit, concentration, is dimensionless
+        #Rvir = 1 # should be in the same dimension than the data, so I should let Rvir=1 and put the data (r_data) in Rvir unit
+        r_s = 1/conc[0]
+        A_c = np.log(1 + conc[0]) - conc[0]/(1 + conc[0]) # NFW factor
+        rho_s = (mass/(4*np.pi*(r_s**3)*A_c)) # in rho_crit
+        x_r = radius/r_s # dimensionless radius
+        rho = rho_s * ( x_r**(-1) ) * (1 + x_r)**(-2) # in rho_crit
+        return rho
+    
     def abg_profile(self, r_minus_2, alpha, beta, gamma,):
         if alpha <=0 : # problematic case
             sys.exit('be carefull, alpha is negative or zero, it should be >0, alpha =',alpha)

@@ -237,35 +237,22 @@ class Concentration_accumulation(Smooth_halo):
 # Implementation and Theory,” Numerical Analysis, ed. G. A. Watson, 
 # Lecture Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
 
-    def profile_NFW(self, radius, conc, mass,):
-        # profile NFW: rho(r) = rho_s/(x * (1 + x)**2), x=radius/r_s
-        # radius should be in Rvir unit, rho_s should be in rho_crit, concentration, is dimensionless
-        #Rvir = 1 # should be in the same dimension than the data, so I should let Rvir=1 and put the data (r_data) in Rvir unit
-        r_s = 1/conc[0]
-        A_c = np.log(1 + conc[0]) - conc[0]/(1 + conc[0]) # NFW factor
-        rho_s = (mass/(4*np.pi*(r_s**3)*A_c)) # in rho_crit
-        x_r = radius/r_s # dimensionless radius
-        rho = rho_s * ( x_r**(-1) ) * (1 + x_r)**(-2) # in rho_crit
-        return rho
-
     def residual(self, param, x_data, y_data, mass):
         y_th = self.profile_NFW(x_data, param, mass)
         # the squared of res is minimized if loss='linear' (default)
         return np.log10(y_data) - np.log10(y_th)
 
-    def fit_concentration(self, radius, p0=np.array([1])):
+    def fit_concentration(self, radius, p0=np.array([100])):
         mass = len(radius)
         out = self.profile_log_r_bin_hist(radius)
         r_log_bin, rho_log_bin, N_part_in_shell = out
         lsq = least_squares(self.residual, p0, method='lm', args=(r_log_bin, rho_log_bin, mass))
-        print(lsq)
         return lsq
         
     def test_concentration(self,):
         my_halo = self.smooth_halo_creation() #kind_profile, b_ax=0.5, c_ax=0.5)
         data = my_halo["data"]
         r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
-        print(r_data)
         lsq = self.fit_concentration(r_data)
         print(lsq)
 
