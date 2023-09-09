@@ -28,7 +28,7 @@ import pandas as pd
 
 
 from semi_analytical_halos.generate_smooth_halo import Smooth_halo
-#from semi_analytical_halos.density_profile import Profile
+
 
 
 class Concentration_accumulation(Smooth_halo):
@@ -230,7 +230,26 @@ class Concentration_accumulation(Smooth_halo):
         ax[1].legend()
         plt.show()
 
+# No bounds => Levenberg-Marquardt Algorithm: 
+# Implementation and Theory,” Numerical Analysis, ed. G. A. Watson, 
+# Lecture Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
 
+# with bounds => Trust Region reflective
+# M. A. Branch, T. F. Coleman, and Y. Li, 
+# “A Subspace, Interior, and Conjugate Gradient Method 
+# for Large-Scale Bound-Constrained Minimization Problems,”
+# SIAM Journal on Scientific Computing, Vol. 21, Number 1, pp 1-23, 1999.
+
+# the squared of res is minimized if loss='linear' (default) # otherwise, see
+# https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html#scipy.optimize.least_squares
+
+# masses of a halo of mass mass and concentration conc, inside spheres of radius radius, according to NFW
+# see equation 2 of Bhattacharya+13: https://iopscience.iop.org/article/10.1088/0004-637X/766/1/32/pdf
+
+# it computes the residual for the fit, see the equation 5 of Child+18
+# https://ui.adsabs.harvard.edu/abs/2018ApJ...859...55C/abstract
+
+# https://math.stackexchange.com/questions/2349026/why-is-the-approximation-of-hessian-jtj-reasonable
 
 if __name__ == '__main__':
     c_comp = Concentration_accumulation()
