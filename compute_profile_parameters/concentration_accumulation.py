@@ -22,7 +22,7 @@ It contains the method:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple
+from typing import Tuple, List
 from scipy.signal import savgol_filter
 import pandas as pd
 
@@ -31,9 +31,7 @@ from semi_analytical_halos.generate_smooth_halo import Smooth_halo
 from semi_analytical_halos.density_profile import Profile
 
 
-
-
-class Concentration_accumulation():
+class Concentration_accumulation(Smooth_halo):
 
     def NFW_function(self, x: np.ndarray[float],) -> np.ndarray[float]:
         """
@@ -134,62 +132,115 @@ class Concentration_accumulation():
         #dc = np.max([conc-conc_low,conc_high-conc])/2
         return np.array([conc, dc]).T
 
-if __name__ == '__main__':
-    halo = Smooth_halo()
-    kind_profile = {"kind of profile": "abg",
-                    "concentration": 10,
-                    "alpha": 1, "beta": 3, "gamma": 1}
-    #my_halo = halo.smooth_halo_creation() #kind_profile, b_ax=0.5, c_ax=0.5)
-    #data = my_halo["data"]
-    #print("N_tot =",my_halo["N_tot"])
-    #halo.plot_data(data[:,0],data[:,1])
-    #halo.beauty_plot_colorbar(data)
+    def build_list(self, wl_arr: List[int], pol_arr: List[int]) -> List[List[int]]:
+        my_list = []
+        for w in wl_arr:
+            for p in pol_arr:
+                if p < w:
+                    my_list += [[w,p]]
+        return my_list
 
-    #r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
+    def compute_many_c_smoothing(self, r_data: np.ndarray, N_bin: int,
+                                 box_arr: List[int], wl_pol: List[List[int]]) \
+                                 -> Tuple[np.ndarray]:
+        out = self.profile_log_r_bin_hist(r_data, N_bin=N_bin)
+        r_log_bin, rho_log_bin, N_part_in_shell = out
+        rho_r2 = rho_log_bin * r_log_bin**2
+        c_peak, dc_peak = np.zeros((len(box_arr))), np.zeros((len(box_arr)))
+        c_peak_sg, dc_peak_sg = np.zeros((len(wl_pol))), np.zeros((len(wl_pol)))
+        for b, box in enumerate(box_arr):
+            rho_r2_smooth = self.smooth(rho_r2, box)
+            c = self.get_c_from_smooth_data(rho_r2_smooth, r_log_bin)
+            c_peak[b:b+1], dc_peak[b:b+1] = c[0][0], c[0][1]
+        for e, wp in enumerate(wl_pol):
+            rho_r2_smooth = savgol_filter(rho_r2, window_length=wp[0], polyorder=wp[1])
+            c = self.get_c_from_smooth_data(rho_r2_smooth, r_log_bin)
+            c_peak_sg[e:e+1], dc_peak_sg[e:e+1] = c[0][0], c[0][1]
+        return c_peak, dc_peak, c_peak_sg, dc_peak_sg
+
+    def test_many_computation(self, box_arr: List[int], wl_arr: List[int], pol_arr: List[int],
+                              N_halos: int, N_part: int, N_bin: int) -> Tuple[pd.DataFrame]:
+        # initialisation
+        wl_pol = self.build_list(wl_arr, pol_arr)
+        c_acc = np.zeros((N_halos))
+        c_peak, dc_peak = np.zeros((N_halos, len(box_arr))), np.zeros((N_halos, len(box_arr)))
+        c_peak_sg, dc_peak_sg = np.zeros((N_halos, len(wl_pol))), np.zeros((N_halos, len(wl_pol)))
+        # loop on many halos
+        for t in range(N_halos):
+            my_halo = self.smooth_halo_creation(N_part=N_part, N_bin=N_bin) #kind_profile, b_ax=0.5, c_ax=0.5)
+            data = my_halo["data"]
+            r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
+            c_acc[t], ok = self.compute_c_NFW_acc(r_data)
+            if ok == False:
+                print(ok, c_acc[t])
+            ##################################################################################
+            cs = self.compute_many_c_smoothing(r_data, N_bin, box_arr, wl_pol)
+            c_peak[t:t+1], dc_peak[t:t+1] = cs[0], cs[1]
+            c_peak_sg[t:t+1], dc_peak_sg[t:t+1] = cs[2], cs[3]
+            ##################################################################################
+        col, dc_col = [], []
+        for b in range(len(box_arr)):
+            col += ["c_box_"+str(box_arr[b])]
+            dc_col += ["dc_box_"+str(box_arr[b])]
+        c_peak = pd.DataFrame(c_peak, columns=col)
+        dc_peak = pd.DataFrame(dc_peak, columns=dc_col)
+        ####################################################################
+        col, dc_col = [], []
+        for wp in wl_pol:
+            col += ["c_wl_"+str(wp[0])+"_pol_"+str(wp[1])]
+            dc_col += ["dc_wl_"+str(wp[0])+"_pol_"+str(wp[1])]
+        c_peak_sg = pd.DataFrame(c_peak_sg, columns=col)
+        dc_peak_sg = pd.DataFrame(dc_peak_sg, columns=dc_col)
+        c_acc = pd.DataFrame(c_acc, columns=["c_acc"])
+        return c_acc, c_peak, dc_peak, c_peak_sg, dc_peak_sg
+    
+    def do_plot(self, c_acc: pd.DataFrame, c_peak: pd.DataFrame, dc_peak: pd.DataFrame,
+                c_peak_sg: pd.DataFrame, dc_peak_sg: pd.DataFrame) -> None:
+        c_acc = c_acc.values
+        fig, ax = plt.subplots(nrows=2, figsize=(10,7), sharey=True)
+        ax[0].errorbar(range(len(c_peak_sg.mean())),
+                    c_peak_sg.mean(), yerr=c_peak_sg.std().values, # + dc_peak_sg.mean().values,
+                    fmt="o", label="c_peak_sg")
+        ax[0].axhline(10, ls="-", color="r", label="true value")
+        ax[0].axhline(np.mean(c_acc), ls="-", color="g", label="c_acc")
+        ax[0].axhline(np.mean(c_acc)+np.std(c_acc), ls="--", color="g")
+        ax[0].axhline(np.mean(c_acc)-np.std(c_acc), ls="--", color="g")
+        ax[0].set_xticks(ticks=range(len(c_peak_sg.mean())),
+                        labels=c_peak_sg.columns, rotation=45)
+        ax[0].xaxis.tick_top()
+        ax[0].set_yticks(ticks=range(8,13))
+        ax[0].set_ylim(7,13)
+        ax[0].grid(True)
+        ax[0].set_ylabel("concentration")
+        ax[0].legend()
+        ##############################################################################""
+        ax[1].errorbar(range(len(c_peak.mean())),
+                    c_peak.mean(), yerr=c_peak.std().values, # + dc_peak_sg.mean().values,
+                    fmt="o", label="c_peak_conv")
+        ax[1].axhline(10, ls="--", color="r", label="true value")
+        ax[1].axhline(np.mean(c_acc), ls="-", color="g", label="c_acc")
+        ax[1].axhline(np.mean(c_acc)+np.std(c_acc), ls="--", color="g")
+        ax[1].axhline(np.mean(c_acc)-np.std(c_acc), ls="--", color="g")
+        ax[1].set_xticks(ticks=range(len(c_peak.mean())),
+                labels=c_peak.columns, rotation=45)
+        ax[1].set_yticks(ticks=range(8,13))
+        ax[1].set_ylim(7,13)
+        ax[1].grid(True)
+        ax[1].set_ylabel("concentration")
+        ax[1].legend()
+        plt.show()
+
+
+
+if __name__ == '__main__':
     c_comp = Concentration_accumulation()
-    profile = Profile()
-    #conc, ok = c_acc.compute_c_NFW_acc(r_data)
-    #print(conc)
-    N_times = 30
+    N_part = 1000
+    N_bin = 20
+    N_halos = 100
     box_arr = [1, 2, 3, 4, 5]
     wl_arr = [2, 3, 4, 5]
     pol_arr = [1, 2, 3, 4, 5]
-    c_acc, c_peak = np.zeros((N_times)), np.zeros((N_times,2*len(box_arr)))
-    c_peak_sg = np.zeros((N_times, 2*len(pol_arr)*len(wl_arr)))
-    for t in range(N_times):
-        my_halo = halo.smooth_halo_creation(N_part=10000) #kind_profile, b_ax=0.5, c_ax=0.5)
-        data = my_halo["data"]
-        r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
-        c_acc[t], ok = c_comp.compute_c_NFW_acc(r_data)
-        if ok == False:
-            print(ok, c_acc[t])
-        out = profile.profile_log_r_bin_hist(r_data, N_bin=30)
-        r_log_bin, rho_log_bin, N_part_in_shell = out
-        rho_r2 = rho_log_bin * r_log_bin**2
-        for b, box in enumerate(box_arr):
-            rho_r2_smooth = c_comp.smooth(rho_r2, box)
-            c_peak[t:t+1,b*2:(b+1)*2] = c_comp.get_c_from_smooth_data(rho_r2_smooth, r_log_bin)
-        for w, wl in enumerate(wl_arr):
-            for p, pol in enumerate(pol_arr):
-                if pol < wl:
-                    rho_r2_smooth = savgol_filter(rho_r2, window_length=wl, polyorder=pol)
-                    beg = w*2*len(pol_arr)+p*2
-                    end = beg + 2
-                    #print(w, p, beg, end)
-                    c_peak_sg[t:t+1, beg:end] = c_comp.get_c_from_smooth_data(rho_r2_smooth, r_log_bin)
-                else :
-                    break
-    col = []
-    for b in range(len(box_arr)):
-        col += ["c_box_"+str(box_arr[b]),"dc_box_"+str(box_arr[b])]
-    c_peak = pd.DataFrame(c_peak, columns=col)
-    print(c_peak.mean(), c_peak.std())
-    
-    col = []
-    for w in range(len(wl_arr)):
-        for p in range(len(pol_arr)):
-            col += ["c_wl_"+str(wl_arr[w])+"_"+str(pol_arr[p]),
-                    "dc_wl_"+str(wl_arr[w])+"_"+str(pol_arr[p])]
-    c_peak_sg = pd.DataFrame(c_peak_sg, columns=col)
-    print(c_peak_sg.mean(), c_peak_sg.std())
+    c_acc, c_peak, dc_peak, c_peak_sg, dc_peak_sg = c_comp.test_many_computation(box_arr, wl_arr, pol_arr, 
+                                                                                 N_halos, N_part, N_bin)
+    c_comp.do_plot(c_acc, c_peak, dc_peak, c_peak_sg, dc_peak_sg)
     
