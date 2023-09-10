@@ -274,7 +274,7 @@ class Profile:
     def profile_log_r_bin_hist(self, radius, r_min=0.01, r_max=1, 
                                    N_bin=30, factor_random_mass=1,) -> Dict[str,np.ndarray]:
         assert r_min > 0, "r_min should be strictly positive"
-        r_shell = np.logspace(np.log10(r_min), np.log10(r_max), N_bin+1) 
+        r_shell = np.logspace(np.log10(r_min), np.log10(r_max), N_bin+1)
         N_part_in_shell, r_shell = np.histogram(radius, bins=r_shell)
         size_shell = r_shell[1:] - r_shell[:-1]
         volume_shell = (4*np.pi/3)*(r_shell[1:]**3 - r_shell[:-1]**3)
@@ -337,12 +337,15 @@ class Profile:
 if __name__ == '__main__':
     from semi_analytical_halos.generate_smooth_halo import Smooth_halo
     halo = Smooth_halo()
-    my_halo = halo.smooth_halo_creation() #kind_profile, b_ax=0.5, c_ax=0.5)
-    data = my_halo["data"]
-    r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
-    print(r_data)
-    
     my_profile = Profile()
-    dic = my_profile.profile_log_r_bin_hist(r_data)
-    print(dic)
-    
+    N_part = 1000
+    N_bin = 10
+    N_halos = 100
+    for h in range(N_halos):
+        my_halo = halo.smooth_halo_creation(N_part=N_part, N_bin=N_bin) #kind_profile, b_ax=0.5, c_ax=0.5)
+        data = my_halo["data"]
+        r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
+        dic = my_profile.profile_log_r_bin_hist(r_data, N_bin=N_bin)
+        print(h)
+        print(dic)
+        

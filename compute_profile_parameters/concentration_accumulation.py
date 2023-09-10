@@ -252,57 +252,85 @@ class Concentration_accumulation(Smooth_halo):
         M_in_sphere_r, M_shell_r = self.mass_NFW(x_data, param, mass, r_min)
         return ((dn - M_shell_r)**2)/dn
 
-    def fit_concentration(self, r_data, p0=np.array([100]), bounds=(0.1, 1000)):
+    def find_bining(self,r_data, N_bin,):
+        for b in range(1,N_bin):
+            # decrease the binning
+            N_bin_use = N_bin - b
+            out = self.profile_log_r_bin_hist(r_data, N_bin=N_bin_use)
+            N_part_in_shell = out["N_part_in_shell"]
+            if np.min(N_part_in_shell) > 0:
+                return out, N_bin_use
+            
+
+    def fit_concentration(self, r_data, N_bin, methods, p0=np.array([100]), bounds=(0.1, 1000)):
         mass = len(r_data)
-        out = self.profile_log_r_bin_hist(r_data)
+        out = self.profile_log_r_bin_hist(r_data, N_bin=N_bin)
+        N_part_in_shell = out["N_part_in_shell"]
+        if np.min(N_part_in_shell) == 0:
+            # decrease the binning
+            out, N_bin = self.find_bining(r_data, N_bin)
+            print("N_bin_use = ",N_bin)
         r, rho = out["radius"], out["rho"]
-        size_shell, N_part_in_shell = out["size_shell"], out["N_part_in_shell"]
+        size_shell = out["size_shell"]
+        N_part_in_shell = out["N_part_in_shell"]
         r_shell = out["r_shell"]
-        # No bounds => Levenberg-Marquardt Algorithm: 
-        # Implementation and Theory,” Numerical Analysis, ed. G. A. Watson, 
-        # Lecture Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
-        lsq = least_squares(self.residual_log, p0, method='lm', args=(r, rho, mass))
-        print("log")
-        print(lsq["x"])
-        # with bounds => Trust Region reflective
-        # M. A. Branch, T. F. Coleman, and Y. Li, 
-        # “A Subspace, Interior, and Conjugate Gradient Method 
-        # for Large-Scale Bound-Constrained Minimization Problems,”
-        # SIAM Journal on Scientific Computing, Vol. 21, Number 1, pp 1-23, 1999.
-        lsq = least_squares(self.residual_log, p0, bounds=bounds,
-                            method='trf', args=(r, rho, mass))
-        print(lsq["x"])
-        lsq = least_squares(self.residual_log, p0, bounds=bounds,
-                            method='dogbox', args=(r, rho, mass))
-        print(lsq["x"])
+        dic = {}
+        if "log_lm" in methods:
+            # No bounds => Levenberg-Marquardt Algorithm: 
+            # Implementation and Theory,” Numerical Analysis, ed. G. A. Watson, 
+            # Lecture Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
+            lsq = least_squares(self.residual_log, p0, method="lm", args=(r, rho, mass))
+            dic["c_log_lm"] = lsq["x"]
+        if "log_trf" in methods:
+            # with bounds => Trust Region reflective
+            # M. A. Branch, T. F. Coleman, and Y. Li, 
+            # “A Subspace, Interior, and Conjugate Gradient Method 
+            # for Large-Scale Bound-Constrained Minimization Problems,”
+            # SIAM Journal on Scientific Computing, Vol. 21, Number 1, pp 1-23, 1999.
+            lsq = least_squares(self.residual_log, p0, bounds=bounds,
+                                method="trf", args=(r, rho, mass))
+            dic["c_log_trf"] = lsq["x"]
+        if "log_dog" in methods:
+            lsq = least_squares(self.residual_log, p0, bounds=bounds,
+                                method="dogbox", args=(r, rho, mass))
+            dic["c_log_dog"] = lsq["x"]
         ################################################################################################
-        print("child18")
-        lsq = least_squares(self.residual_Child18, p0, method='lm', args=(r, N_part_in_shell, size_shell, mass))
-        print(lsq["x"])
-        lsq = least_squares(self.residual_Child18, p0, method='trf', bounds=bounds, 
-                            args=(r, N_part_in_shell, size_shell, mass))
-        print(lsq["x"])
-        lsq = least_squares(self.residual_Child18, p0, method='dogbox', bounds=bounds,
-                            args=(r, N_part_in_shell, size_shell, mass))
-        print(lsq["x"])
+        if "Child18_lm" in methods:
+            lsq = least_squares(self.residual_Child18, p0, method="lm",
+                                args=(r, N_part_in_shell, size_shell, mass))
+            dic["c_Child18_lm"] = lsq["x"]
+        if "Child18_trf" in methods:
+            lsq = least_squares(self.residual_Child18, p0, method="trf", bounds=bounds, 
+                                args=(r, N_part_in_shell, size_shell, mass))
+            dic["c_Child18_trf"] = lsq["x"]
+        if "Child18_dog" in methods:
+            lsq = least_squares(self.residual_Child18, p0, method="dogbox", bounds=bounds,
+                                args=(r, N_part_in_shell, size_shell, mass))
+            dic["c_Child18_dog"] = lsq["x"]
         ###############################################################################################
-        print("Batthacharya+13")
-        lsq = least_squares(self.residual_Bhattacharya13, p0, method='lm',
-                            args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
-        print(lsq["x"])
-        lsq = least_squares(self.residual_Bhattacharya13, p0, method='trf', bounds=bounds,
-                            args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
-        print(lsq["x"])
-        lsq = least_squares(self.residual_Bhattacharya13, p0, method='dogbox', bounds=bounds,
-                            args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
-        print(lsq["x"])
-        return lsq
+        if "Bhattacharya13_lm" in methods:
+            lsq = least_squares(self.residual_Bhattacharya13, p0, method="lm",
+                                args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
+            dic["c_Bhattacharya13_lm"] = lsq["x"]
+        if "Bhattacharya13_trf" in methods:
+            lsq = least_squares(self.residual_Bhattacharya13, p0, method="trf", bounds=bounds,
+                                args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
+            dic["c_Bhattacharya13_trf"] = lsq["x"]
+        if "Bhattacharya13_dog" in methods:
+            lsq = least_squares(self.residual_Bhattacharya13, p0, method="dogbox", bounds=bounds,
+                                args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
+            dic["c_Bhattacharya13_dog"] = lsq["x"]
+        return dic
         
-    def test_concentration(self,):
-        my_halo = self.smooth_halo_creation() #kind_profile, b_ax=0.5, c_ax=0.5)
-        data = my_halo["data"]
-        r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
-        lsq = self.fit_concentration(r_data)
+    def test_concentration(self, methods, N_part, N_bin, N_halos,):
+        conc = pd.DataFrame()
+        for h in range(N_halos):
+            my_halo = self.smooth_halo_creation(N_part=N_part, N_bin=N_bin) #kind_profile, b_ax=0.5, c_ax=0.5)
+            data = my_halo["data"]
+            r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
+            dic = self.fit_concentration(r_data=r_data, N_bin=N_bin, methods=methods)
+            conc = pd.concat([conc, pd.DataFrame(dic, index=[h])])
+        return conc
 
 
 # the squared of res is minimized if loss='linear' (default) # otherwise, see
@@ -319,8 +347,8 @@ class Concentration_accumulation(Smooth_halo):
 if __name__ == '__main__':
     c_comp = Concentration_accumulation()
     N_part = 1000
-    N_bin = 20
-    N_halos = 100
+    N_bin = 10
+    N_halos = 1000
     box_arr = [1, 2, 3, 4, 5]
     wl_arr = [2, 3, 4, 5]
     pol_arr = [1, 2, 3, 4, 5]
@@ -328,5 +356,9 @@ if __name__ == '__main__':
     #                                                                             N_halos, N_part, N_bin)
     #c_comp.do_plot(c_acc, c_peak, dc_peak, c_peak_sg, dc_peak_sg)
     
-    c_comp.test_concentration()
-    
+    methods = ["log_trf", "log_dog",
+               "Child18_trf","Child18_dog",
+               "Bhattacharya13_trf", "Bhattacharya13_dog"]
+    conc = c_comp.test_concentration(methods, N_part=N_part, N_bin=N_bin, N_halos=N_halos)
+    print(conc.mean())
+    print(conc.std())
