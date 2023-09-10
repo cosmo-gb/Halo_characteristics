@@ -123,6 +123,22 @@ class Profile:
         M_in_r = (4 * np.pi * rho_s * r_s**3) * (np.log(1+x) - x/(x+1))
         return(M_in_r)
     
+    def NFW_func(self, x,):
+        return np.log(1+x) - x/(1+x)
+    
+    def mass_NFW(self, radius, conc, mass, r_min,):
+        # masses of a halo of mass mass and concentration conc, inside spheres of radius radius, according to NFW
+        # see equation 2 of Bhattacharya+13: https://iopscience.iop.org/article/10.1088/0004-637X/766/1/32/pdf
+        # radius should be in Rvir unit
+        assert radius[0] > r_min, "the first element of radius should be larger than the resolution r_min"
+        radius = np.insert(radius, 0, r_min)
+        M_in_sphere_r = self.NFW_func(conc * radius) * mass/self.NFW_func(conc)
+        #M_in_sphere_rmin = self.NFW_func(conc * r_min) * mass/self.NFW_func(conc)
+        M_shell_r = np.zeros((len(radius)-1))
+        M_shell_r = M_in_sphere_r[1:] - M_in_sphere_r[:-1]
+        #M_shell_r[0] = M_in_sphere_r[0] - M_in_sphere_rmin
+        return M_in_sphere_r, M_shell_r
+    
     def get_rho_s(self, n_x, r_min=0, r_max=1,):
         #r_s, n_x, log_slope = self.deal_with_kind_profile(kind_profile, r_bin, R_max)
         n_x_2 = lambda x: (x**(2)) * n_x(x)
@@ -197,7 +213,7 @@ class Profile:
         alpha = np.append(alpha,alpha_last)
         return(alpha)
     
-    def profile_log_r_bin_hist(self, radius, r_min=0.01, r_max=1, N_bin=30, factor_random_mass=1,):
+    def profile_log_r_bin_hist_old_old(self, radius, r_min=0.01, r_max=1, N_bin=30, factor_random_mass=1,):
         # It computes the density profile with an equal logarithmic shell size
         # It imposes shells of a given size, computed with r_min r_max and N_bin
         # Then it computes the number of particles in each shell
@@ -220,6 +236,60 @@ class Profile:
         rho_log_bin = N_part_in_shell*factor_random_mass/Volume_shell
         return r_log_bin, rho_log_bin, N_part_in_shell
     
+    def profile_log_r_bin_hist_old(self, radius, r_min=0.01, r_max=1, N_bin=30,
+                               factor_random_mass=1, dn_dr=False):
+        # It computes the density profile with an equal logarithmic shell size
+        # It imposes shells of a given size, computed with r_min r_max and N_bin
+        # Then it computes the number of particles in each shell
+        # the density is simply N_part/V_shell
+        # radius is the particles radii, not need to be sorted
+        # radius, r_min and r_max should be in the same length unit
+        # N_bin is the number of shells used for the density profile
+        # rho_loc should be sorted as radius and in rho_crit unit (optional, to compute the scatter of the profile)
+        # factor_random: take into account the mass differnce between a particle mass in the halo 
+        # and a particle in the simulation DEUS, it can be =1 if I am using data from DEUS
+        # r_bin_log: contains N_bin elements, radius_mean of each shell
+        # rho_bin_log: contains N_bin elements, density profile in the shells
+        # N_part_in_shell: contains N_bin elements, number of particles in each shell
+        #if r_min <= 0:
+        #    print('r_min should be strictly positive')
+        assert r_min > 0, "r_min should be strictly positive"
+        r_log_bin = np.logspace(np.log10(r_min), np.log10(r_max), N_bin+1) 
+        N_part_in_shell, r_shell = np.histogram(radius, bins=r_log_bin)
+        Volume_shell = (4*np.pi/3)*(r_shell[1:]**3 - r_shell[:-1]**3)
+        rho_log_bin = N_part_in_shell * factor_random_mass/Volume_shell
+        if dn_dr:
+            N_part_not_res = len(np.where(radius < r_min)[0])
+            dn, dr = np.zeros((N_bin+1), dtype=int), np.zeros((N_bin+1))
+            dn[0] = N_part_not_res
+            dn[1:] = N_part_in_shell
+            dr[0] = r_log_bin[0]
+            dr[1:] = r_log_bin[1:] - r_log_bin[:-1]
+            r_log_bin = (r_log_bin[1:] + r_log_bin[:-1])/2
+            return r_log_bin, rho_log_bin, N_part_in_shell, dn, dr
+        else:
+            r_log_bin = (r_log_bin[1:] + r_log_bin[:-1])/2
+            return r_log_bin, rho_log_bin, N_part_in_shell
+        
+    def profile_log_r_bin_hist(self, radius, r_min=0.01, r_max=1, 
+                                   N_bin=30, factor_random_mass=1,) -> Dict[str,np.ndarray]:
+        assert r_min > 0, "r_min should be strictly positive"
+        r_shell = np.logspace(np.log10(r_min), np.log10(r_max), N_bin+1) 
+        N_part_in_shell, r_shell = np.histogram(radius, bins=r_shell)
+        size_shell = r_shell[1:] - r_shell[:-1]
+        volume_shell = (4*np.pi/3)*(r_shell[1:]**3 - r_shell[:-1]**3)
+        rho = N_part_in_shell * factor_random_mass/volume_shell
+        N_part_not_res = np.array([len(np.where(radius < r_min)[0])])
+        radius = (r_shell[1:] + r_shell[:-1])/2
+        dic = {"radius": radius, # average of the radius of the bin edge i.e. of the shell edge
+               "rho": rho, # density in the bin = density(r_bin[i]<r<r_bin[i+1])
+               "r_shell": r_shell, # radius of the edge of the bins i.e. of the shell
+               "N_part_in_shell": N_part_in_shell, # number of particles in each shell
+               "size_shell": size_shell, # radial size of each shell
+               "N_part_not_res": N_part_not_res, # number of particles at r<r_min
+               }
+        return dic
+        
     def plot_profile(self, r_bin, rho_bin,):
         plt.rc('font', family='serif')
         plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.top'] = True
@@ -264,4 +334,15 @@ class Profile:
         return()
     
     
+if __name__ == '__main__':
+    from semi_analytical_halos.generate_smooth_halo import Smooth_halo
+    halo = Smooth_halo()
+    my_halo = halo.smooth_halo_creation() #kind_profile, b_ax=0.5, c_ax=0.5)
+    data = my_halo["data"]
+    r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
+    print(r_data)
+    
+    my_profile = Profile()
+    dic = my_profile.profile_log_r_bin_hist(r_data)
+    print(dic)
     

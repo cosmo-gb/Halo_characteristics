@@ -147,7 +147,7 @@ class Concentration_accumulation(Smooth_halo):
                                  box_arr: List[int], wl_pol: List[List[int]]) \
                                  -> Tuple[np.ndarray]:
         out = self.profile_log_r_bin_hist(r_data, N_bin=N_bin)
-        r_log_bin, rho_log_bin, N_part_in_shell = out
+        r_log_bin, rho_log_bin = out["radius"], out["rho"]
         rho_r2 = rho_log_bin * r_log_bin**2
         c_peak, dc_peak = np.zeros((len(box_arr))), np.zeros((len(box_arr)))
         c_peak_sg, dc_peak_sg = np.zeros((len(wl_pol))), np.zeros((len(wl_pol)))
@@ -233,20 +233,69 @@ class Concentration_accumulation(Smooth_halo):
         ax[1].legend()
         plt.show()
 
-# No bounds => Levenberg-Marquardt Algorithm: 
-# Implementation and Theory,” Numerical Analysis, ed. G. A. Watson, 
-# Lecture Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
-
-    def residual(self, param, x_data, y_data, mass):
+    def residual_log(self, param, x_data, y_data, mass,):
         y_th = self.profile_NFW(x_data, param, mass)
         # the squared of res is minimized if loss='linear' (default)
         return np.log10(y_data) - np.log10(y_th)
+    
+    def residual_Child18(self, param, x_data, dn, dr, mass,):
+        # it computes the residual for the fit, see the equation 5 of Child+18
+        # https://ui.adsabs.harvard.edu/abs/2018ApJ...859...55C/abstract
+        rho_NFW = self.profile_NFW(x_data, param, mass)
+        dn_dr_NFW = 4 * np.pi * x_data**2 * rho_NFW
+        # the squared of residual is minimized if the option loss='linear' (default) in least_squares
+        return np.sqrt(((dn/dr - dn_dr_NFW)**2)/(dn/dr**2)) 
+    
+    def residual_Bhattacharya13(self, param, x_data, dn, mass, r_min,):
+        # it computes the residual of the fit, see the equation 4 of Bhattacharya+13
+        # https://iopscience.iop.org/article/10.1088/0004-637X/766/1/32/pdf
+        M_in_sphere_r, M_shell_r = self.mass_NFW(x_data, param, mass, r_min)
+        return ((dn - M_shell_r)**2)/dn
 
-    def fit_concentration(self, radius, p0=np.array([100])):
-        mass = len(radius)
-        out = self.profile_log_r_bin_hist(radius)
-        r_log_bin, rho_log_bin, N_part_in_shell = out
-        lsq = least_squares(self.residual, p0, method='lm', args=(r_log_bin, rho_log_bin, mass))
+    def fit_concentration(self, r_data, p0=np.array([100]), bounds=(0.1, 1000)):
+        mass = len(r_data)
+        out = self.profile_log_r_bin_hist(r_data)
+        r, rho = out["radius"], out["rho"]
+        size_shell, N_part_in_shell = out["size_shell"], out["N_part_in_shell"]
+        r_shell = out["r_shell"]
+        # No bounds => Levenberg-Marquardt Algorithm: 
+        # Implementation and Theory,” Numerical Analysis, ed. G. A. Watson, 
+        # Lecture Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
+        lsq = least_squares(self.residual_log, p0, method='lm', args=(r, rho, mass))
+        print("log")
+        print(lsq["x"])
+        # with bounds => Trust Region reflective
+        # M. A. Branch, T. F. Coleman, and Y. Li, 
+        # “A Subspace, Interior, and Conjugate Gradient Method 
+        # for Large-Scale Bound-Constrained Minimization Problems,”
+        # SIAM Journal on Scientific Computing, Vol. 21, Number 1, pp 1-23, 1999.
+        lsq = least_squares(self.residual_log, p0, bounds=bounds,
+                            method='trf', args=(r, rho, mass))
+        print(lsq["x"])
+        lsq = least_squares(self.residual_log, p0, bounds=bounds,
+                            method='dogbox', args=(r, rho, mass))
+        print(lsq["x"])
+        ################################################################################################
+        print("child18")
+        lsq = least_squares(self.residual_Child18, p0, method='lm', args=(r, N_part_in_shell, size_shell, mass))
+        print(lsq["x"])
+        lsq = least_squares(self.residual_Child18, p0, method='trf', bounds=bounds, 
+                            args=(r, N_part_in_shell, size_shell, mass))
+        print(lsq["x"])
+        lsq = least_squares(self.residual_Child18, p0, method='dogbox', bounds=bounds,
+                            args=(r, N_part_in_shell, size_shell, mass))
+        print(lsq["x"])
+        ###############################################################################################
+        print("Batthacharya+13")
+        lsq = least_squares(self.residual_Bhattacharya13, p0, method='lm',
+                            args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
+        print(lsq["x"])
+        lsq = least_squares(self.residual_Bhattacharya13, p0, method='trf', bounds=bounds,
+                            args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
+        print(lsq["x"])
+        lsq = least_squares(self.residual_Bhattacharya13, p0, method='dogbox', bounds=bounds,
+                            args=(r_shell[1:], N_part_in_shell, mass, r_shell[0]))
+        print(lsq["x"])
         return lsq
         
     def test_concentration(self,):
@@ -254,13 +303,7 @@ class Concentration_accumulation(Smooth_halo):
         data = my_halo["data"]
         r_data = np.sqrt(data[:,0]**2 + data[:,1]**2 + data[:,2]**2)
         lsq = self.fit_concentration(r_data)
-        print(lsq)
 
-# with bounds => Trust Region reflective
-# M. A. Branch, T. F. Coleman, and Y. Li, 
-# “A Subspace, Interior, and Conjugate Gradient Method 
-# for Large-Scale Bound-Constrained Minimization Problems,”
-# SIAM Journal on Scientific Computing, Vol. 21, Number 1, pp 1-23, 1999.
 
 # the squared of res is minimized if loss='linear' (default) # otherwise, see
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html#scipy.optimize.least_squares
