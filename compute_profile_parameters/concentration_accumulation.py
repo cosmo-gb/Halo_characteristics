@@ -351,7 +351,7 @@ if __name__ == '__main__':
     c_comp = Concentration_accumulation()
     N_part = 1000
     N_bin = 10
-    N_halos = 1000
+    N_halos = 100
     box_arr = [1, 2, 3, 4, 5]
     wl_arr = [2, 3, 4, 5]
     pol_arr = [1, 2, 3, 4, 5]
