@@ -19,6 +19,9 @@ It contains the method:
     - compute_c_NFW_acc
 
 """
+
+import sys
+print(sys.path)
 # computation
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,6 +33,11 @@ from scipy.signal import savgol_filter
 from scipy.optimize import least_squares
 
 # my code
+#from semi_analytical_halos.generate_smooth_halo import generate_smooth_halo
+#Smooth_halo = generate_smooth_halo.Smooth_halo
+#from semi_analytical_halos.generate_smooth_halo import Smooth_halo
+#from generate_smooth_halo import Smooth_halo
+#from generate_smooth_halo import Smooth_halo
 from semi_analytical_halos.generate_smooth_halo import Smooth_halo
 
 
@@ -261,7 +269,6 @@ class Concentration_accumulation(Smooth_halo):
             if np.min(N_part_in_shell) > 0:
                 return out, N_bin_use
             
-
     def fit_concentration(self, r_data, N_bin, methods, p0=np.array([100]), bounds=(0.1, 1000)):
         mass = len(r_data)
         out = self.profile_log_r_bin_hist(r_data, N_bin=N_bin)
@@ -359,6 +366,6 @@ if __name__ == '__main__':
     methods = ["log_trf", "log_dog",
                "Child18_trf","Child18_dog",
                "Bhattacharya13_trf", "Bhattacharya13_dog"]
-    conc = c_comp.test_concentration(methods, N_part=N_part, N_bin=N_bin, N_halos=N_halos)
-    print(conc.mean())
-    print(conc.std())
+    #conc = c_comp.test_concentration(methods, N_part=N_part, N_bin=N_bin, N_halos=N_halos)
+    #print(conc.mean())
+    #print(conc.std())
