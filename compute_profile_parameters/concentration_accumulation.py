@@ -20,8 +20,6 @@ It contains the method:
 
 """
 
-import sys
-print(sys.path)
 # computation
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,11 +31,9 @@ from scipy.signal import savgol_filter
 from scipy.optimize import least_squares
 
 # my code
-#from semi_analytical_halos.generate_smooth_halo import generate_smooth_halo
-#Smooth_halo = generate_smooth_halo.Smooth_halo
-#from semi_analytical_halos.generate_smooth_halo import Smooth_halo
-#from generate_smooth_halo import Smooth_halo
-#from generate_smooth_halo import Smooth_halo
+# Be carefull, you need to be in the correct folder 
+# ~/Bureau/Cosmo_after_thesis/DEUS_halo/Codes/Halo_characteristics
+# in order to run this line of code
 from semi_analytical_halos.generate_smooth_halo import Smooth_halo
 
 
@@ -366,6 +362,6 @@ if __name__ == '__main__':
     methods = ["log_trf", "log_dog",
                "Child18_trf","Child18_dog",
                "Bhattacharya13_trf", "Bhattacharya13_dog"]
-    #conc = c_comp.test_concentration(methods, N_part=N_part, N_bin=N_bin, N_halos=N_halos)
-    #print(conc.mean())
-    #print(conc.std())
+    conc = c_comp.test_concentration(methods, N_part=N_part, N_bin=N_bin, N_halos=N_halos)
+    print(conc.mean())
+    print(conc.std())
