@@ -123,8 +123,34 @@ class Profile:
         M_in_r = (4 * np.pi * rho_s * r_s**3) * (np.log(1+x) - x/(x+1))
         return(M_in_r)
     
-    def NFW_func(self, x,):
+    def NFW_function(self, x: np.ndarray[float],) -> np.ndarray[float]:
+        """
+        This computes the NFW function y = ln(1+x) - x/(1+x)
+        #############################################################################
+        Input parameters:
+        - x: radius of the halo in scale radius r_s unit
+        #############################################################################
+        Returns:
+        - outputs of the NFW function
+        """
         return np.log(1+x) - x/(1+x)
+    
+    def mass_in_r_s_NFW(self, Mass_total: float, r_s: np.ndarray[float],) -> np.ndarray[float]:
+        """
+        This function computes the mass inside r_s of an NFW profile.
+        It is using the equation 6 of 
+        https://iopscience.iop.org/article/10.3847/1538-4357/aabf95/pdf
+        #############################################################################
+        Input parameters:
+        - Mass_total: total mass in the halo (e.g. Mass_total=Mvir if the virial radius is considered)
+        it can be a number of particles as it is a mass in unit of particle mass
+        - r_s: scale radius: r_s = 1/concentration in unit of the halo size
+        r_s should be given in unit of the halo size
+        #############################################################################
+        Returns:
+        - mass contained within r_s = M(<r_s)
+        """
+        return Mass_total * (np.log(2) - 0.5)/self.NFW_function(1/r_s)
     
     def mass_NFW(self, radius, conc, mass, r_min,):
         # masses of a halo of mass mass and concentration conc, inside spheres of radius radius, according to NFW
@@ -132,7 +158,7 @@ class Profile:
         # radius should be in Rvir unit
         assert radius[0] > r_min, "the first element of radius should be larger than the resolution r_min"
         radius = np.insert(radius, 0, r_min)
-        M_in_sphere_r = self.NFW_func(conc * radius) * mass/self.NFW_func(conc)
+        M_in_sphere_r = self.NFW_function(conc * radius) * mass/self.NFW_function(conc)
         #M_in_sphere_rmin = self.NFW_func(conc * r_min) * mass/self.NFW_func(conc)
         M_shell_r = np.zeros((len(radius)-1))
         M_shell_r = M_in_sphere_r[1:] - M_in_sphere_r[:-1]

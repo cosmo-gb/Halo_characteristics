@@ -28,7 +28,7 @@ from semi_analytical_halos.density_profile import Profile
 
 class Smooth_halo(Profile):
     
-    def around_integer_from_float(self,my_float):
+    def around_integer_from_float(self, my_float,):
         if isinstance(my_float,float) :    
             my_int = int(my_float)
             p = 1 - (my_float - my_int) # proba of adding +1 to the number of subhalos selected
