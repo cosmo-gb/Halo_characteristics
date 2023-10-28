@@ -290,6 +290,7 @@ if __name__ == '__main__':
     data = my_halo["data"]
     print("N_tot =",my_halo["N_tot"])
     #halo.plot_data(data[:,0],data[:,1])
+    print('stupid')
     halo.beauty_plot_colorbar(data)
     #halo.do_many_times(10)
 
