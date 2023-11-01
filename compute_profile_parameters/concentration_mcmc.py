@@ -1,4 +1,14 @@
-# computation
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on September/October 2023
+
+@author: guillaume
+"""
+
+"""
+This script is a draft for fitting halo profile and compute concentration with mcmc method
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
