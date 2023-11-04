@@ -46,9 +46,10 @@ class Sphericity():
         return dic
     
     def initialization(self, pos: np.ndarray[float], it_min=10,) -> Dict[str, np.ndarray[float]]:
+        print("initialisation")
         N_particles = len(pos)
         #a, b, c = 1, 1, 1 # axis length in unit of the largest axis of the ellipsoid, it will change at each iteration
-        a_arr, b_arr, c_arr = np.ones((it_min)), np.ones((it_min)), np.ones((it_min)), np.ones((it_min))
+        a_arr, b_arr, c_arr = np.ones((it_min)), np.ones((it_min)), np.ones((it_min))
         Sphericity, Elongation, Triaxiality = np.ones((it_min)), np.ones((it_min)), np.ones((it_min)) # all the values of sphericty and elongation will be here, for each iteration
         Passage, P_inv = np.ones((it_min, 3, 3)), np.ones((it_min, 3, 3))
         #Passage = np.identity(3) # passage matrix between two frame, it will change at each iteration
@@ -57,17 +58,21 @@ class Sphericity():
         #P_inv_gen = np.identity(3) # general inverse matrice: it corresponds to the change between the first and the last frame
         #r_ell = np.sqrt(pos[:,0]**2 + (pos[:,1]/Elongation[-1])**2 + (pos[:,2]/Sphericity[-1])**2 ) # ellipsoidal radius
         for it in range(1, it_min):
+            print(it)
             r_ell = np.sqrt(pos[:,0]**2 + (pos[:,1]/Elongation[-1])**2 + (pos[:,2]/Sphericity[-1])**2 )
             # I compute the shape, here a>b>c have values in unit of Rvir, a can be different from 1
             res = self.compute_SQT_once(pos, r_ell, N_particles)
             # I add a new value of sphericity and Elongation
             Sphericity[it], Elongation[it] = res["Sphericity"], res["Elongation"]
             a_arr[it], b_arr[it], c_arr[it], Triaxiality[it] = res["a"], res["b"], res["c"], res["Triaxiality"]
-            Passage[it] = res["Passage"]
+            Passage[it] = np.matrix(res["Passage"])
             P_inv[it] = np.linalg.inv(Passage[it]) # inverse passage between 2 consecutive frames
             # I multiply the position by the inverse passage matrix, 
             # in order to go in the natural frame of the ellipsoid
-            pos = np.array((np.dot(P_inv[it], pos)))
+            #print(P_inv[it])
+            #print(pos)
+            #print(np.dot(P_inv[it], np.matrix(pos).T))
+            pos = np.array((np.dot(P_inv[it], np.matrix(pos).T))).T
             #x, y, z = pos[0], pos[1], pos[2]
             # I compute a radius for each particle, weighted by the ellipsoid axis
             #r_ell = np.sqrt(x**2 + (y/Elongation[-1])**2 + (z/Sphericity[-1])**2) 
@@ -75,10 +80,11 @@ class Sphericity():
             Passage_gen = np.dot(Passage[it], Passage_gen) 
             P_inv_gen = np.dot(P_inv[it], P_inv_gen) 
         # I put the particles position in a matrix 3*N_particles
-        dic = {"a": a_arr, "b": b_arr, "c": c_arr,
+        dic = {"a_arr": a_arr, "b_arr": b_arr, "c_arr": c_arr,
                "Sphericity": Sphericity, "Elongation": Elongation, "Triaxiality": Triaxiality,
                "Passage": Passage, "P_inv": P_inv, "Passage_gen": Passage_gen, "P_inv_gen": P_inv_gen,
                "r_ell": r_ell, "N_particles": N_particles, "pos": pos}
+        print("end initialisation")
         return dic
     
     def update_once(self, pos, r_ell, a, a_unit=1):
@@ -101,18 +107,24 @@ class Sphericity():
                "pos": pos, "r_ell": r_ell}
         return dic
     
-    def run_many(self, pos, it_min=10, it_loop=10, error=0.01):
+    def run_many(self, pos, it_min=10, it_loop=10, error=0.01, N_part_frac=0.1):
         res = self.initialization(pos, it_min=it_min)
+        print(res)
         Sphericity, Elongation = res["Sphericity"], res["Elongation"]
         Triaxiality = res["Triaxiality"]
         pos = res["pos"]
         r_ell = res["r_ell"]
-        a_arr = res["a_arr"]
+        a_arr, b_arr, c_arr = res["a_arr"], res["b_arr"], res["c_arr"]
+        Passage, P_inv = res["Passage"], res["P_inv"]
+        Passage_gen, P_inv_gen = res["Passage_gen"], res["P_inv_gen"]
         it = 0
         err_Sphericity = np.std(Sphericity[-it_min:])/np.mean(Sphericity[-it_min:])
         err_Elongation = np.std(Elongation[-it_min:])/np.mean(Elongation[-it_min:])
         while (it < it_min) or ((err_Sphericity > error) or (err_Elongation > error)):
             ind_ell = np.where(r_ell < a_arr[-1])[0]
+            print("it=", it, "N_part_in=", len(pos), "N_part_it=", len(ind_ell))
+            print("S=", Sphericity[-1], "Q=", Elongation[-1], "T=", Triaxiality[-1])
+            print("err_wished=", error, "err_S=", err_Sphericity, "err_Q=", err_Elongation)
             #x, y, z, r_ell = pos[ind_ell, 0], pos[ind_ell, 1], pos[ind_ell, 2], r_ell[ind_ell]
             N_particles_ellipse = len(ind_ell)
             # I compute the shape, here a>b>c have values in unit of Rvir, a can be different from 1
@@ -120,30 +132,26 @@ class Sphericity():
             Sphericity = np.append(Sphericity, res_once["Sphericity"])
             Elongation = np.append(Elongation, res_once["Elongation"])
             Triaxiality = np.append(Triaxiality, res_once["Triaxiality"])
+            print("S=", Sphericity[-1], "Q=", Elongation[-1], "T=", Triaxiality[-1])
             a_arr = np.append(a_arr, res_once["a"])
             b_arr = np.append(b_arr, res_once["b"])
             c_arr = np.append(c_arr, res_once["c"])
-            Passage = np.append(Passage, res_once["Passage"])
-            P_inv = np.append(P_inv, res_once["P_inv"])
-            
-            Passage[it] = res["Passage"]
-            P_inv[it] = np.linalg.inv(Passage[it]) # inverse passage between 2 consecutive frames
-            # I add a new value of sphericity and Elongation
-            #Sphericity, Elongation = np.append(Sphericity, s), np.append(Elongation, q)
-            P_inv = np.linalg.inv(Passage) # inverse passage between 2 consecutive frames
-            # global inverse passage matrice
-            pos = np.array((np.dot(P_inv, np.matrix(pos.T)))).T
-            #x, y, z = pos[0], pos[1], pos[2]
-            # I compute a radius for each particle, weighted by the ellipsoid axis
-            r_ell = np.sqrt(pos[:,0]**2 + (pos[:,1]/q)**2 + (pos[:,2]/s)**2 ) 
-            Passage_general_inverse = np.dot(P_inv, Passage_general_inverse) 
-            #if it > 
-            Sphericity
-            it += 1
+            Passage = np.append(Passage, res_once["Passage"].reshape((1,3,3)), axis=0)
+            P_inv = np.append(P_inv, np.linalg.inv(Passage[-1]))
+            pos = np.array((np.dot(P_inv[-1], np.matrix(pos.T)))).T
+            r_ell = np.sqrt(pos[:,0]**2 + (pos[:,1]/Elongation[-1])**2 + (pos[:,2]/Sphericity[-1])**2)
+            P_inv_gen = np.dot(P_inv[-1], P_inv_gen)
+            Passage_gen = np.dot(Passage[-1], Passage_gen)
             err_Sphericity = np.std(Sphericity[-it_min:])/np.mean(Sphericity[-it_min:])
-            err_Elongation = np.std(Sphericity[-it_min:])/np.mean(Sphericity[-it_min:])
+            err_Elongation = np.std(Elongation[-it_min:])/np.mean(Elongation[-it_min:])
+            print("err_wished=", error, "err_S=", err_Sphericity, "err_Q=", err_Elongation)
+            it += 1
             if it - it_min > it_loop:
                 error *= 1.1
+            if N_particles_ellipse < N_part_frac * len(pos):
+                print("not enough particles")
+                break
+        return Sphericity, Elongation, Triaxiality
                 
 def compute_ellipsoid_parameters(x,y,z,a_unit=1,
                                  error_initial=0.001,Initial_number_iteration=10,
@@ -273,7 +281,11 @@ if __name__ == '__main__':
     my_halo = halo.smooth_halo_creation(N_part=N_part_th, N_bin=N_bin_th, R_max=R_max_th, res=res_th,
                                         a_ax=a_ax_th, b_ax=b_ax_th, c_ax=c_ax_th)
     data = my_halo["data"]
-    halo.beauty_plot_colorbar(data, ax_1=0, ax_2=2, r_max=R_max_th)
+    #halo.beauty_plot_colorbar(data, ax_1=0, ax_2=2, r_max=R_max_th)
     sphere = Sphericity()
     res = sphere.compute_SQT_once(pos=data, r=my_halo["r"], N_particles=my_halo["N_tot"])
     print(res)
+    S, Q, T = sphere.run_many(pos=data, it_min=10, it_loop=10, error=0.01, N_part_frac=0.1)
+    print(S)
+    print(Q)
+    print(T)
