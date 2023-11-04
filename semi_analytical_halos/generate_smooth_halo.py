@@ -138,8 +138,9 @@ class Smooth_halo(Profile):
         plt.subplots_adjust(bottom=0., right=0.8, top=1)
         cax = plt.axes([0.85, 0.15, 0.075, 0.7])
         plt.colorbar(mass_2,cax=cax)
-        ax.set_xlabel('x ($R_{vir}$)')
-        ax.set_ylabel('y ($R_{vir}$)',labelpad=0)
+        lab = ["x", "y", "z"]
+        ax.set_xlabel(lab[ax_1]+' ($R_{vir}$)')
+        ax.set_ylabel(lab[ax_2]+' ($R_{vir}$)',labelpad=0)
         circle1 = plt.Circle((0, 0), 1, color='white',lw=2,fill=False)
         ax.add_patch(circle1)
         ax.text(0.7,-0.8,'1 Rvir',c='white')

@@ -137,7 +137,7 @@ class Sphericity():
             # I compute a radius for each particle, weighted by the ellipsoid axis
             r_ell = np.sqrt(pos[:,0]**2 + (pos[:,1]/q)**2 + (pos[:,2]/s)**2 ) 
             Passage_general_inverse = np.dot(P_inv, Passage_general_inverse) 
-            if it > 
+            #if it > 
             Sphericity
             it += 1
             err_Sphericity = np.std(Sphericity[-it_min:])/np.mean(Sphericity[-it_min:])
@@ -260,6 +260,7 @@ if __name__ == '__main__':
     b_ax_th = 0.8
     c_ax_th = 0.6
     S_th = c_ax_th/a_ax_th
+    print("R_max_th =", R_max_th)
     print("S_th =", S_th)
     Q_th = b_ax_th/a_ax_th
     print("Q_th =", Q_th)
@@ -272,7 +273,7 @@ if __name__ == '__main__':
     my_halo = halo.smooth_halo_creation(N_part=N_part_th, N_bin=N_bin_th, R_max=R_max_th, res=res_th,
                                         a_ax=a_ax_th, b_ax=b_ax_th, c_ax=c_ax_th)
     data = my_halo["data"]
+    halo.beauty_plot_colorbar(data, ax_1=0, ax_2=2, r_max=R_max_th)
     sphere = Sphericity()
-    res = sphere.compute_SQT_once(x=data[:,0], y=data[:,1], z=data[:,2],
-                                  r=my_halo["r"], N_particles=my_halo["N_tot"])
+    res = sphere.compute_SQT_once(pos=data, r=my_halo["r"], N_particles=my_halo["N_tot"])
     print(res)
