@@ -10,6 +10,7 @@ Created on Wed Nov 01 14:36 2023
 This script computes the sphericity parameters of a halo
 It also allows to test the computation with the class test_sphericity
 and by generating semi-analytical halos
+
 """
 
 import numpy as np
