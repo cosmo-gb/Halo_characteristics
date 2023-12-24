@@ -8,7 +8,9 @@ Created on Thursday 2023/12/21
 
 '''
 This file allows to set the cosmological and numerical parameters
-of any of the DEUS-FUR simulations
+of any of the DEUS-FUR simulations inside all other scripts
+# see http://www.deus-consortium.org/deus-data/snapshots-data/#snapshots
+# see also https://www.deus-consortium.org/deus-data/documentation-to-use-data/
 '''
 
 
@@ -19,6 +21,7 @@ import sys
 class Simu_param():
 
     def __init__(self, cosmo: str, z: float,):
+        # see http://www.deus-consortium.org/deus-data/snapshots-data/#snapshots
         if cosmo != "lcdm" and cosmo != "rpcdm" and cosmo != "wcdm":
             sys.exit("cosmo should be either lcdm or rpcdm or wcdm")
         if z not in [0, 0.5, 1, 1.5, 2]:
@@ -93,7 +96,8 @@ class Simu_param():
         # newton constant in m**3 kg**-1 s**-2, from the PDG of 2016, the last 2 numbers are uncertain (31)
         self.G_NEWTON = 6.67408 * 10**(-11)
         self.HSML = 0.005  # hsml in Mpc/h, (hydro smoothing length)
-        # equations:
+        # box sie in Mpc
+        # note that if box size is known, then one could reverse the equation and compute unit_l
         self.L_BOX = (self.UNIT_L * 10**(-2))/((self.PC_TO_METER /
                                                 self.HUBBLE_CONSTANT_DIMENSIONLESS) * 10**6)
         self.REDSHIFT = 648/self.L_BOX - 1
@@ -124,33 +128,3 @@ class Simu_param():
         self.RHO_VIR_BRIAN_NORMAN = self.DELTA_VIR_BRIAN_NORMAN * self.RHO_CRIT
         # put the velocity in km/s at this redshift
         self.V_REN = self.UNIT_L/(self.UNIT_T * 10**5)
-
-
-sim_par_z_0 = Simu_param(cosmo="lcdm", z=0)
-
-sim_par_z_05 = Simu_param(cosmo="lcdm", z=0.5)
-
-# from redhsift, I can build l_box and unit_l
-print(sim_par_z_0.REDSHIFT, sim_par_z_0.L_BOX - 648/(1+sim_par_z_0.REDSHIFT))
-unitl = sim_par_z_0.L_BOX * 100 * sim_par_z_0.PC_TO_METER * \
-    (10**6) / sim_par_z_0.HUBBLE_CONSTANT_DIMENSIONLESS
-print(unitl - sim_par_z_0.UNIT_L)
-# let's try to build the unit_t
-print(sim_par_z_0.UNIT_T, sim_par_z_05.UNIT_T)
-
-
-def time_universe(redshift, H0, Omega_lambda_0, Omega_matter_0):
-    coef = (1/H0) * 2/(3 * np.sqrt(Omega_lambda_0))
-    num_1 = Omega_lambda_0 * (1 + redshift)**(-3)
-    num_2 = num_1 + Omega_matter_0
-    num = np.sqrt(num_1) + np.sqrt(num_2)
-    den = np.sqrt(Omega_matter_0)
-    return coef * np.log(num/den)
-
-
-t0 = time_universe(0, sim_par_z_0.HUBBLE_CONSTANT,
-                   sim_par_z_0.OMEGA_LAMBDA_0, sim_par_z_0.OMEGA_MATTER_0)
-
-ren_time_in_years = sim_par_z_0.PC_TO_METER * 10**3
-
-print(t0*ren_time_in_years/0.72, sim_par_z_0.UNIT_T)
