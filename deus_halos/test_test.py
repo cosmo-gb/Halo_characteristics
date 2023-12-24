@@ -1,0 +1,25 @@
+UNIT_L = 0.277801161516035E+28
+
+z = 0.5
+print(UNIT_L/(1+z)-0.185393317409458E+28)
+
+
+def compute_redshift(UNIT_L):
+    PC_TO_METER = 3.08567758149 * 10**16
+    HUBBLE_CONSTANT_DIMENSIONLESS = 0.72
+    L_BOX = (UNIT_L * 10**(-2)) / \
+        ((PC_TO_METER / HUBBLE_CONSTANT_DIMENSIONLESS) * 10**6)
+    REDSHIFT = 648/L_BOX - 1
+    return REDSHIFT
+
+
+REDSHIFT_0 = compute_redshift(UNIT_L)
+print(REDSHIFT_0)
+
+REDSHIFT_0_5 = compute_redshift(0.185393317409458E+28)
+print(REDSHIFT_0_5)
+
+delta_z = REDSHIFT_0 + REDSHIFT_0_5
+delta_z = REDSHIFT_0_5
+delta_z = REDSHIFT_0_5 - REDSHIFT_0
+print(UNIT_L/(1 + delta_z)-0.185393317409458E+28)

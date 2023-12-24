@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan  6 18:56:06 2022
+Created on Thu Jan  6 18:26:25 2022
 
 @author: guillaume
 """
@@ -11,12 +11,12 @@ import numpy as np
 '''Some parameters of the simulation  '''
 # see http://www.deus-consortium.org/deus-data/snapshots-data/#snapshots
 ##########################################################################
-# simu DEUS-FUR, Lbox = 648 Mpc/h, lcdmw7, z = 2, LCDM DE
+# simu DEUS-FUR, Lbox = 648 Mpc/h, lcdmw7, z = 0.5, LCDM DE
 # see http://www.deus-consortium.org/deus-data/snapshots-data/#snapshots
 # to pass from a length from DEUS simulation in a length in centimetre at this redshift
-unit_l = 0.927614649851624E+27
+unit_l = 0.185393317409458E+28
 # to pass from a time from DEUS simulation in a time in second at this redshift
-unit_t = 0.478152902920744E+17
+unit_t = 0.190994011556267E+18
 Omega_matter_0 = 0.257299989461899  # ratio of matter in the Universe at z ~ 0,
 # ratio of dark energy in the univers at z ~ 0
 Omega_lambda_0 = 1 - Omega_matter_0
@@ -24,7 +24,7 @@ Omega_lambda_0 = 1 - Omega_matter_0
 pc_to_meter = 3.08567758149 * 10**16
 h = 0.72
 L_box = (unit_l * 10**(-2))/((pc_to_meter/h) * 10**6)
-redshift = 648/L_box - 1  # redshift  roughly 1 in DEUS , z ~ 2
+redshift = 648/L_box - 1  # redshift  roughly 1 in DEUS , z ~ 0.5
 print('z =', redshift)
 # mass of one simu particle in Msun/h
 mass_one_particle = 2.2617151991513 * 10**9
