@@ -60,13 +60,13 @@ class Extract_halo_pos(Simu_param):
                 path + '../halo_properties/halo_pos.dat', index=False)
 
 
-extract_halo = Extract_halo_pos(cosmo="rpcdm", z=0)
+if __name__ == '__main__':
+    extract_halo = Extract_halo_pos(cosmo="rpcdm", z=0)
 
-
-N_cube = 512
-path = "./data/z_0/rpcdm/halos_position/halos_position/"
-file_name = "fof_boxlen648_n2048_rpcdmw7_masst_"
-extract_halo.extract_halo_pos(N_cube=N_cube,
-                              path=path,
-                              file_name=file_name,
-                              to_save=True)
+    N_cube = 512
+    path = "./data/z_0/rpcdm/halos_position/halos_position/"
+    file_name = "fof_boxlen648_n2048_rpcdmw7_masst_"
+    extract_halo.extract_halo_pos(N_cube=N_cube,
+                                  path=path,
+                                  file_name=file_name,
+                                  to_save=True)
