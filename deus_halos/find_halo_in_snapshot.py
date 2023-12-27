@@ -17,18 +17,20 @@ import numpy as np
 import pandas as pd
 from os.path import isfile
 from simu_param import Simu_param
-class Find_halo_in_snapshot():
+class Find_halo_in_snapshot(Simu_param):
 
-    def __init__(self,):
-        self.N_cubes_1D = 8
+    def __init__(self, *args, **kwargs):
+        super(Find_halo_in_snapshot, self).__init__(*args, **kwargs)
+        self.N_cubes = 512
+        self.n_dim = 3
+        self.N_cubes_1D = int(np.power(self.N_cubes, 1/self.n_dim))
 
     def check_halo_in_which_cube(self,
-                                 boundaries: np.ndarray[float],
-                                 cdm_i: np.ndarray[float],
+                                 cdm: np.ndarray[float],
                                  Rlim: np.ndarray[float],
-                                 halo_cube: np.ndarray[float],
-                                 i: int,
-                                 L_box: float,
+                                 dim: int = None,
+                                 halo_cube: np.ndarray[float] = None,
+                                 boundaries: np.ndarray[float] = None,
                                  ) -> np.ndarray[float]:
         ''' This function finds in which cube of the full simulation box are 
         the halo centers of all haloes in the direction i (x <=> i=1, y <=> i=2, z <=> i=3). 
@@ -55,13 +57,24 @@ class Find_halo_in_snapshot():
         '''
         # First I check if the center is inside the simulation box [0,L_box],
         # and I set it if it is not the case (the simulation must used periodic condition)
-        ind_i_plus = np.where(cdm_i > L_box)[0]
-        cdm_i[ind_i_plus] = cdm_i[ind_i_plus] - L_box
+        if dim is None:
+            dim = 1
+        print("dim =", dim)
+        if boundaries is None:
+            boundaries = np.linspace(0,
+                                     self.L_BOX,
+                                     self.N_cubes_1D+1,
+                                     dtype=float)
+        if halo_cube is None:
+            halo_cube = np.zeros((len(cdm), self.n_dim*2 + 1),
+                                 dtype=int)
+        cdm_i = cdm[:, dim-1]
+        ind_i_plus = np.where(cdm_i > self.L_BOX)[0]
+        cdm_i[ind_i_plus] = cdm_i[ind_i_plus] - self.L_BOX
         ind_i_minus = np.where(cdm_i < 0)[0]
-        cdm_i[ind_i_minus] = cdm_i[ind_i_minus] + L_box
-        N_cubes_1D = len(boundaries) - 1
+        cdm_i[ind_i_minus] = cdm_i[ind_i_minus] + self.L_BOX
         # loop on the cubes inside the full box in the i direction
-        for c_i in range(N_cubes_1D):
+        for c_i in range(self.N_cubes_1D):
             # boundaries of the cube c_i in the i direction
             bound_min = boundaries[c_i]
             bound_max = boundaries[c_i+1]
@@ -79,12 +92,18 @@ class Find_halo_in_snapshot():
             i_n_used[ind_minus] = 1  # upper boundary effect possible
             c_i_array = np.ones((N_c_i), dtype=int) * c_i
             halo_cube[ind_i, 0], halo_cube[ind_i,
-                                           i], halo_cube[ind_i, i+3] = ind_i, c_i_array, i_n_used
+                                           dim], halo_cube[ind_i, dim+3] = ind_i, c_i_array, i_n_used
+        if dim < self.n_dim:
+            halo_cube = self.check_halo_in_which_cube(cdm=cdm,
+                                                      Rlim=Rlim,
+                                                      halo_cube=halo_cube,
+                                                      dim=dim+1,
+                                                      boundaries=boundaries)
+
         return halo_cube
 
     def find_cubes(self,
                    halo_cube: np.ndarray[float],
-                   N_cubes_1D: int,
                    ) -> list[list[int]]:
         '''This function takes as an argument what returns the function: 
         check_halo_in_which_cube(data_properties,boundaries,factor,L_box).
@@ -117,46 +136,76 @@ class Find_halo_in_snapshot():
         # I begin by considering the cube of the halo center, initialization
         # if all the i_n=0, I just add [n] to that list and return it
         # no shift case, 1 cube
+        halo_dic = {}
+        halo_dic["halo_numero"] = h
+
+        def set_to_dic(c_x, c_y, c_z, i_x, i_y, i_z): return {"cube_x": c_x,
+                                                              "cube_y": c_y,
+                                                              "cube_z": c_z,
+                                                              "shift_category_x": i_x,
+                                                              "shift_category_y": i_y,
+                                                              "shift_category_z": i_z
+                                                              }
+        halo_dic["halo_cube_main"] = set_to_dic(
+            c_x, c_y, c_z, N_fun, N_fun, N_fun)
         halo = [[h], [c_x, c_y, c_z, N_fun, N_fun, N_fun]]
-        # cube numero of the cube neighbour in the i direction
-        c_x_new, c_y_new, c_z_new = (
-            c_x + x_n) % N_cubes_1D, (c_y + y_n) % N_cubes_1D, (c_z + z_n) % N_cubes_1D
-        # The i_n_new's won't be used in the direction where i_n=0, and I will use N_fun in that direction
-        # if used, it is =0 if the cube containing the halo center is not close to the boundary
-        # of the full simulation box. Otherwise, it is =-1 or =1.
-        x_n_new, y_n_new, z_n_new = (
-            c_x + x_n)//N_cubes_1D, (c_y + y_n)//N_cubes_1D, (c_z + z_n)//N_cubes_1D
         # potentially 7 more cubes than the one of the halo center, 1 cube by if
         if x_n != 0:  # at least 2 cubes (shift on x), but maybe more
+            # cube numero of the cube neighbour in the i=1 direction (for x)
+            c_x_new = (c_x + x_n) % self.N_cubes_1D
+            # The i_n_new's won't be used in the direction where i_n=0, and I will use N_fun in that direction
+            # if used, it is =0 if the cube containing the halo center is not close to the boundary
+            # of the full simulation box. Otherwise, it is =-1 or =1.
+            x_n_new = (c_x + x_n) // self.N_cubes_1D
+            halo_dic["halo_cube_x"] = set_to_dic(
+                c_x_new, c_y, c_z, x_n_new, N_fun, N_fun)
             halo = halo + [[c_x_new, c_y, c_z, x_n_new, N_fun, N_fun]]
             n += 1  # I need to shift in the x direction
         if y_n != 0:  # at least 2 cubes (shift on y), but maybe more
+            c_y_new = (c_y + y_n) % self.N_cubes_1D
+            y_n_new = (c_y + y_n) // self.N_cubes_1D
+            halo_dic["halo_cube_y"] = set_to_dic(
+                c_x, c_y_new, c_z, N_fun, y_n_new, N_fun)
             halo = halo + [[c_x, c_y_new, c_z, N_fun, y_n_new, N_fun]]
             n += 1  # I need to shift in the y direction
         if z_n != 0:  # at least 2 cubes (shift on z), but maybe more
+            c_z_new = (c_z + z_n) % self.N_cubes_1D
+            z_n_new = (c_z + z_n) // self.N_cubes_1D
+            halo_dic["halo_cube_z"] = set_to_dic(
+                c_x, c_y, c_z_new, N_fun, N_fun, z_n_new)
             halo = halo + [[c_x, c_y, c_z_new, N_fun, N_fun, z_n_new]]
             n += 1  # I need to shift in the z direction
         # if I need more than 1 cube, I also need to consider the shift in both directions
         # at least 4 cubes (shift on x and y), but maybe more
         if x_n != 0 and y_n != 0:
+            halo_dic["halo_cube_xy"] = set_to_dic(
+                c_x_new, c_y_new, c_z, x_n_new, y_n_new, N_fun)
             halo = halo + [[c_x_new, c_y_new, c_z, x_n_new, y_n_new, N_fun]]
         # at least 4 cubes (shift on x and z), but maybe more
         if x_n != 0 and z_n != 0:
+            halo_dic["halo_cube_xz"] = set_to_dic(
+                c_x_new, c_y, c_z_new, x_n_new, N_fun, z_n_new)
             halo = halo + [[c_x_new, c_y, c_z_new, x_n_new, N_fun, z_n_new]]
         # at least 4 cubes (shift on y and z), but maybe more
         if y_n != 0 and z_n != 0:
+            halo_dic["halo_cube_yz"] = set_to_dic(
+                c_x, c_y_new, c_z_new, N_fun, y_n_new, z_n_new)
             halo = halo + [[c_x, c_y_new, c_z_new, N_fun, y_n_new, z_n_new]]
         # 8 cubes (maximum) (shift on x, y and z)
         if x_n != 0 and y_n != 0 and z_n != 0:
+            halo_dic["halo_cube_xyz"] = set_to_dic(
+                c_x_new, c_y_new, c_z_new, x_n_new, y_n_new, z_n_new)
             halo = halo + \
                 [[c_x_new, c_y_new, c_z_new, x_n_new, y_n_new, z_n_new]]
-        return halo + [[n]]
+        halo_dic["n_cubes_needed"] = 2**n
+        halo_dic["n_cubes_needed_indicator"] = n
+        # return halo + [[n]]
+        return halo_dic
 
     def check_if_file_exist(self,
                             path_cube: str,
                             name_file: str,
                             halo_cube: list[list[int]],
-                            N_cubes: int,
                             ) -> tuple[np.ndarray[int], int]:
         """
         check if the files corresponding to the cubes of halo_cube for a halo
@@ -171,9 +220,9 @@ class Find_halo_in_snapshot():
             # c_x, c_y and c_z integers between [0,N_cube_1D-1]
             c_i = np.array((my_cube[0], my_cube[1], my_cube[2]))
             # cube numbers in 1 direction in the simulation box
-            N_cube_1D = int(np.cbrt(N_cubes))
             # numero of the file corresponding to 1 cube c_x, c_y, c_z, integer between [0,N_cubes-1]
-            num = int(c_i[0]*N_cube_1D**2 + c_i[1]*N_cube_1D + c_i[2])
+            num = int(c_i[0] * self.N_cubes_1D**2 +
+                      c_i[1] * self.N_cubes_1D + c_i[2])
             if c == 0:
                 num_main = num
             file_c_ex = isfile(path_cube+name_file+'_' +
@@ -206,60 +255,28 @@ if __name__ == '__main__':
 
     halo = pd.read_csv(path + file_name)
 
-    simu = Simu_param(cosmo="rpcdm", z=0)
+    # simu = Simu_param(cosmo="rpcdm", z=0)
 
-    find_halo = Find_halo_in_snapshot()
+    find_halo = Find_halo_in_snapshot(cosmo="rpcdm", z=0)
 
-    N_cubes = 512
-
-    # number of cubes **(1/3) = N_cubes_1D
-    N_loop = int(np.cbrt(N_cubes))
-    boundaries = np.linspace(0, simu.L_BOX, N_loop+1, dtype=float)
-    cdm = halo[["x (Mpc/h)", "y (Mpc/h)", "z (Mpc/h)"]]
-    factor = 5
+    cdm = halo[["x (Mpc/h)", "y (Mpc/h)", "z (Mpc/h)"]].values
     N_FOF_all = halo["halo N_part"].values
     Rvir = np.power(N_FOF_all * 3/(4 * np.pi *
-                    simu.RHO_VIR_BRIAN_NORMAN), 1/3)
+                    find_halo.RHO_VIR_BRIAN_NORMAN), 1/find_halo.n_dim)
+    factor = 5
     Rlim = factor * Rvir
-    N_haloes = len(Rlim)  # number of haloes
-    halo_cube = np.zeros((N_haloes, 7), dtype=int)
-    print(type(boundaries), type(
-        cdm["x (Mpc/h)"].values), type(Rlim), type(halo_cube), type(simu.L_BOX))
-    print(boundaries.shape,
-          cdm["x (Mpc/h)"].values.shape, Rlim.shape, halo_cube.shape)
-    halo_cube = find_halo.check_halo_in_which_cube(boundaries=boundaries,
-                                                   cdm_i=cdm["x (Mpc/h)"].values,
-                                                   Rlim=Rlim,
-                                                   halo_cube=halo_cube,
-                                                   i=1,
-                                                   L_box=simu.L_BOX)
+    halo_cube = find_halo.check_halo_in_which_cube(cdm=cdm,
+                                                   Rlim=Rlim)
 
-    halo_cube = find_halo.check_halo_in_which_cube(boundaries=boundaries,
-                                                   cdm_i=cdm["y (Mpc/h)"].values,
-                                                   Rlim=Rlim,
-                                                   halo_cube=halo_cube,
-                                                   i=2,
-                                                   L_box=simu.L_BOX)
-
-    halo_cube = find_halo.check_halo_in_which_cube(boundaries=boundaries,
-                                                   cdm_i=cdm["z (Mpc/h)"].values,
-                                                   Rlim=Rlim,
-                                                   halo_cube=halo_cube,
-                                                   i=3,
-                                                   L_box=simu.L_BOX)
-
-    print(halo_cube)
-    print(halo_cube.shape, type(halo_cube))
     path_cube = "./data/z_0/rpcdm/snapshot/"
     name_file = "fof_boxlen648_n2048_rpcdmw7_cube"
     for f in range(3):
-        my_cubes_f = find_halo.find_cubes(halo_cube[f],
-                                          N_cubes_1D=N_loop)
+        my_cubes_f = find_halo.find_cubes(halo_cube[f])
         print(my_cubes_f)
         file_existence, num_main = find_halo.check_if_file_exist(path_cube=path_cube,
                                                                  name_file=name_file,
-                                                                 halo_cube=my_cubes_f,
-                                                                 N_cubes=N_cubes)
+                                                                 halo_cube=my_cubes_f)
+        # N_cube_1D=find_halo.N_cubes_1D)
         print(file_existence, num_main)
         if np.min(file_existence) == 1:  # it means that all the needed files exist
             print('The needed files do exist')
