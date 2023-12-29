@@ -16,13 +16,16 @@ This script allows to identify inside which snapshot a halo lies
 import numpy as np
 import pandas as pd
 from os.path import isfile
+from functools import lru_cache
+from tqdm import tqdm
 from simu_param import Simu_param
 class Find_halo_in_snapshot(Simu_param):
 
     def __init__(self, cosmo: str, z: float, N_cubes: int, n_dim: int,) -> None:
         super(Find_halo_in_snapshot, self).__init__(cosmo, z)
-        self.N_cubes = N_cubes
-        self.n_dim = n_dim
+        self.N_cubes = N_cubes  # number of snapshot file
+        self.n_dim = n_dim  # number of dimension (it should be 3)
+        # number of cubs in 1 direction
         self.N_cubes_1D = int(np.power(self.N_cubes, 1/self.n_dim))
         #  boundaries is a 1D np.array containing the bin_edges (in Mpc/h) of the full box cut in N_cubes small cubes.
         #  As the simulation is a cube, it is sufficient to have it in 1D, and to re-use it in all directions i
@@ -268,8 +271,8 @@ class Find_halo_in_snapshot(Simu_param):
                             halo_cube: dict[str, int | dict[int]],
                             ) -> dict[str, bool]:
         """
-        check if the files corresponding to the cubes of halo_cube for a halo
-        are present at path+name_file
+        check if the deus snapshot files corresponding to the cubes of halo_cube
+        for a halo are present at path+name_file
         """
         file_existence = {}
         for cube_name, my_cube in halo_cube.items():
@@ -283,70 +286,94 @@ class Find_halo_in_snapshot(Simu_param):
                                    cube_name] = False
         return file_existence
 
+    @lru_cache
+    def create_df_old(self,
+                      df,
+                      halo_cube: dict[str, int | dict[str, int]],
+                      loc: int,
+                      ):
+        print("loc = ", loc)
+        halo_dic = self.find_cubes(halo_cube=halo_cube[loc])
+        for key, val in halo_dic.items():
+            if type(val) != dict:
+                if key not in df.columns:
+                    df[key] = np.nan
+                df.iloc[loc][key] = val
+            else:
+                for cube_name, cube_val in val.items():
+                    if key + cube_name not in df.columns:
+                        df[key + cube_name] = np.nan
+                    df.iloc[loc][key + cube_name] = cube_val
+        if loc < len(halo_cube) - 1:
+            df = self.create_df_old(df=df, halo_cube=halo_cube, loc=loc+1)
+        return df
+
+    def create_df(self,
+                  halo_cube: np.ndarray[int],
+                  all_halo: pd.DataFrame | None = None,
+                  ) -> pd.DataFrame:
+        if all_halo is None:
+            all_halo = pd.DataFrame()
+        my_cubes = self.find_cubes(halo_cube=halo_cube)
+        non_dic = {}
+        for key, val in my_cubes.items():
+            if type(val) != dict:
+                non_dic[key] = val
+        one_halo = pd.Series(non_dic)
+        for key, val in my_cubes.items():
+            if type(val) == dict:
+                one_halo = pd.concat([one_halo, pd.Series(val.values(),
+                                                          index=[key + "_" + k for k in val.keys()])])
+        one_halo = pd.DataFrame(one_halo).T
+        return pd.concat([all_halo, one_halo], axis=0)
+
+    def create_df_final(self,
+                        all_halo: pd.DataFrame,
+                        my_cubes: dict[str, int | dict[str, int]],
+                        ) -> pd.DataFrame:
+        one_halo = self.create_serie(my_cubes=my_cubes)
+        return pd.concat([all_halo, one_halo], axis=0)
+
 
 if __name__ == '__main__':
-
-    # step 1:
-    # check_halo_in_which_cube
-    # argument: boundaries, cdm[0], Rlim, halo_cube, 1, L_box)
-    # need to know the box size and how the snapshot are cut
-    # and also an estimate of the halo position and size
-    # need to apply check_halo_in_which_cube as many times there are dimensions (=> 3 times)
-
-    # step 2:
-    # find_cubes
-    # argument: output of check_halo_in_which_cube
-    # It finds explicitly all the cubes (between 1 and 8) that are assigned to each halo
-    # and if these cubes are at the opposite of the full simulation box
-    # I need to check the periodicity anyway
-
-    # see also periodicity and check_if_file_exist
-
+    # see also periodicity
+    # load halo file with their cdm and N_part_fof
     path = "./data/z_0/rpcdm/halos_position/halos_position/"
-    file_name = '../halo_properties/halo_pos.dat'
+    file_name = "../halo_properties/halo_pos.dat"
     halo = pd.read_csv(path + file_name)
-
-    find_halo = Find_halo_in_snapshot(cosmo="rpcdm", z=0, N_cubes=512, n_dim=3)
-
     cdm = halo[["x (Mpc/h)", "y (Mpc/h)", "z (Mpc/h)"]].values
     N_FOF_all = halo["halo N_part"].values
+
+    # instantiate my object
+    find_halo = Find_halo_in_snapshot(cosmo="rpcdm", z=0, N_cubes=512, n_dim=3)
+
+    # estimate Rvir then Rlim
     Rvir = np.power(N_FOF_all * 3/(4 * np.pi *
                     find_halo.RHO_VIR_BRIAN_NORMAN), 1/find_halo.n_dim)
     factor = 5
     Rlim = factor * Rvir
+
+    # first characterization of halo
     halo_cube = find_halo.check_halo_in_which_cube(cdm=cdm,
                                                    Rlim=Rlim)
-
+    # to check if the deus files needed exist or not
     path_cube = "./data/z_0/rpcdm/snapshot/"
     name_file = "fof_boxlen648_n2048_rpcdmw7_cube"
-    for f in range(3):
-        my_cubes_f = find_halo.find_cubes(halo_cube[f])
-        print("my_cubes_f: ", my_cubes_f)
-        file_existence = find_halo.check_if_file_exist(path_cube=path_cube,
-                                                       name_file=name_file,
-                                                       halo_cube=my_cubes_f)
-        print(file_existence)
-        if False not in file_existence.values():  # it means that all the needed files exist
-            print('The needed files do exist')
-        else:
-            print("the needed file do not exist")
-        # if len(my_cubes) > 3 or my_cubes[1][-3] != 137 or my_cubes[1][-2] != 137 or my_cubes[1][-1] != 137:
-        #    print(my_cubes)
-
-    """halo_cube = pd.DataFrame(halo_cube, columns=["halo numero",
-                                                 "cube of halo center x",
-                                                 "cube of halo center y",
-                                                 "cube of halo center z",
-                                                 "cube close of center x",
-                                                 "cube close of center y",
-                                                 "cube close of center z"])
-
-    print(halo_cube["cube of halo center x"].value_counts(),
-          halo_cube["cube of halo center y"].value_counts(),
-          halo_cube["cube of halo center z"].value_counts())
-
-    print(halo_cube["cube close of center x"].value_counts(),
-          halo_cube["cube close of center y"].value_counts(),
-          halo_cube["cube close of center z"].value_counts())
-
-    """
+    import time
+    t_beg = time.time()
+    print(len(halo_cube))
+    all_halo = pd.DataFrame()
+    for f in tqdm(range(len(halo_cube))):  # len(halo_cube)):
+        # second characterization of the halos
+        all_halo = find_halo.create_df(
+            all_halo=all_halo,
+            halo_cube=halo_cube[f])
+        # file_existence = find_halo.check_if_file_exist(path_cube=path_cube,
+        #                                               name_file=name_file,
+        #                                               halo_cube=my_cubes_f)
+    t_end = time.time()
+    print(all_halo.head())
+    print(all_halo.shape)
+    all_halo.to_csv(path + "../halo_properties/halo_cube_pos.dat",
+                    index=False)
+    print(t_end-t_beg)
