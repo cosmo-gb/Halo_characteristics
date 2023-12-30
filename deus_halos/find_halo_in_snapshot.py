@@ -26,7 +26,7 @@ class Find_halo_in_snapshot(Simu_param):
         self.N_cubes = N_cubes  # number of snapshot file
         self.n_dim = n_dim  # number of dimension (it should be 3)
         # number of cubs in 1 direction
-        self.N_cubes_1D = int(np.power(self.N_cubes, 1/self.n_dim))
+        self.N_cubes_1D = int(np.power(self.N_cubes, 1/self.n_dim)) + 1
         #  boundaries is a 1D np.array containing the bin_edges (in Mpc/h) of the full box cut in N_cubes small cubes.
         #  As the simulation is a cube, it is sufficient to have it in 1D, and to re-use it in all directions i
         self.boundaries = np.linspace(0,
